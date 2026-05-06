@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "301672827415",
+    "project_id": "runk-up",
+    "storage_bucket": "runk-up.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:301672827415:android:9db9959d2a298abc3b6a52",
+        "android_client_info": {
+          "package_name": "com.example.rankup"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "301672827415-3rqauoivnp55pm5pr66dhc8174qa1e89.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.rankup",
+            "certificate_hash": "0b151317eba1ce83b28b6790e7457525bb0f18d5"
+          }
+        },
+        {
+          "client_id": "301672827415-qcrg3hlki9lv6350227vcs1jm8fmk1ma.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVtfQaDcwjX-54YNFYpr8W9fqk_kQJFqg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "301672827415-qcrg3hlki9lv6350227vcs1jm8fmk1ma.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
