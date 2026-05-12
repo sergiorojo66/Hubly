@@ -1,9 +1,12 @@
 package com.example.rankup.domain.model
 
+import com.google.firebase.firestore.ServerTimestamp
+import java.util.Date
+
 data class ChatMessage(
     val id: String = "",
     val senderId: String = "",
     val senderName: String = "",
     val message: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    @ServerTimestamp val timestamp: Date? = null // Usa Date para Firebase
 )

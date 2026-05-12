@@ -168,12 +168,8 @@ fun ProfileScreen(
                             border = BorderStroke(2.dp, Color.White)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                val initials =
-                                    if (user.displayName.contains("User")) "U" else user.displayName.take(
-                                        1
-                                    ).uppercase()
                                 Text(
-                                    initials,
+                                    text = user.initials, // Usamos el campo initials del modelo
                                     color = Color.White,
                                     style = MaterialTheme.typography.headlineSmall
                                 )

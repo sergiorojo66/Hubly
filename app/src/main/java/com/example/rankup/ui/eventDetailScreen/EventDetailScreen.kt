@@ -22,7 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.rankup.domain.model.Event
-//import com.example.rankup.ui.eventDetailScreen.components.ChatSection
+import com.example.rankup.ui.eventDetailScreen.components.ChatSection
 import com.example.rankup.ui.eventDetailScreen.components.RankingSection
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -39,6 +39,7 @@ fun EventDetailScreen(
     val isJoined by viewModel.isUserJoined.collectAsState()
     val errorMessage by viewModel.error.collectAsState()
     val context = LocalContext.current
+    val organizerName by viewModel.organizerName.collectAsState()
 
     LaunchedEffect(eventId) {
         viewModel.loadEvent(eventId)
@@ -50,50 +51,23 @@ fun EventDetailScreen(
         }
     }
 
+    LaunchedEffect(isJoined) {
+        if (!isJoined && selectedTab != "info") {
+            selectedTab = "info"
+        }
+    }
+
     event?.let { e ->
         val isFull = (e.participantsIds.size >= (e.maxParticipants ?: Int.MAX_VALUE))
 
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8F9FA))) {
-            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            // USAMOS COLUMN SIN SCROLL GLOBAL PARA QUE EL CHAT FUNCIONE
+            Column(modifier = Modifier.fillMaxSize()) {
 
-                Box(modifier = Modifier.fillMaxWidth().height(260.dp)) {
-                    AsyncImage(
-                        model = e.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)))
-                        )
-                    )
+                // --- 1. CABECERA (ESTÁTICA) ---
+                EventHeader(e, navController, organizerName)
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.9f)) {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.Black)
-                            }
-                        }
-                        Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.9f)) {
-                            IconButton(onClick = { /* Share */ }) {
-                                Icon(Icons.Default.Share, contentDescription = null, tint = Color.Black)
-                            }
-                        }
-                    }
-
-                    Column(modifier = Modifier.align(Alignment.BottomStart).padding(24.dp)) {
-                        Badge(containerColor = Color(0xFF7C4DFF), contentColor = Color.White) {
-                            Text(e.category, modifier = Modifier.padding(4.dp))
-                        }
-                        Text(e.title, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                        Text("Organizado por USER${e.organizer.take(10)}", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-
+                // --- 2. TABS (ESTÁTICAS) ---
                 ScrollableTabRow(
                     selectedTabIndex = getTabIndex(selectedTab, e.modules),
                     containerColor = Color.White,
@@ -101,87 +75,134 @@ fun EventDetailScreen(
                     edgePadding = 24.dp,
                     divider = {}
                 ) {
-                    TabItem("info", "Info", selectedTab, isLocked = false) {
-                        selectedTab = "info"
-                    }
+                    TabItem("info", "Info", selectedTab, isLocked = false) { selectedTab = "info" }
 
                     if (e.modules.contains("chat")) {
-                        TabItem(
-                            id = "chat",
-                            label = "Chat",
-                            selectedId = selectedTab,
-                            isLocked = !isJoined
-                        ) {
-                            selectedTab = "chat"
-                        }
+                        TabItem("chat", "Chat", selectedTab, isLocked = !isJoined) { selectedTab = "chat" }
                     }
 
                     if (e.modules.contains("ranking")) {
-                        TabItem(
-                            id = "ranking",
-                            label = "Ranking",
-                            selectedId = selectedTab,
-                            isLocked = !isJoined
-                        ) {
-                            selectedTab = "ranking"
-                        }
+                        TabItem("ranking", "Ranking", selectedTab, isLocked = !isJoined) { selectedTab = "ranking" }
                     }
                 }
 
-                val isJoined by viewModel.isUserJoined.collectAsState()
-
-                Box(modifier = Modifier.padding(24.dp)) {
+                // --- 3. CONTENIDO DINÁMICO (USA WEIGHT PARA RELLENAR ESPACIO) ---
+                Box(modifier = Modifier.weight(1f)) {
                     when (selectedTab) {
-                        "info" -> InfoSection(e)
-                        "ranking" -> {
-                            if (isJoined) RankingSection(viewModel)
-                            else LockedModulePlaceholder("Ranking")
+                        "info" -> {
+                            // SOLO LA INFO TIENE SCROLL PROPIO
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(24.dp)
+                            ) {
+                                InfoSection(e)
+                                Spacer(modifier = Modifier.height(100.dp)) // Espacio para el botón flotante
+                            }
                         }
-//                        "chat" -> {
-//                            if (isJoined) ChatSection(viewModel)
-//                            else LockedModulePlaceholder("Chat")
-//                        }
+                        "ranking" -> {
+                            Box(modifier = Modifier.padding(24.dp)) {
+                                if (isJoined) RankingSection(viewModel)
+                                else LockedModulePlaceholder("Ranking")
+                            }
+                        }
+                        "chat" -> {
+                            // EL CHAT NO LLEVA PADDING EXTRA PARA AJUSTARSE A LOS BORDES
+                            if (isJoined) ChatSection(viewModel)
+                            else Box(modifier = Modifier.padding(24.dp)) { LockedModulePlaceholder("Chat") }
+                        }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(100.dp))
             }
 
-            Surface(
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-                shadowElevation = 8.dp,
-                color = Color.White
-            ) {
-                Button(
-                    onClick = {
-                        if (!isJoined && !isFull) viewModel.joinEvent(e.id)
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(20.dp).height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = when {
-                            isJoined -> Color.Gray
-                            isFull -> Color(0xFFE57373)
-                            else -> Color(0xFF6200EE)
-                        },
-                        disabledContainerColor = Color.Gray
-                    ),
-                    enabled = !isJoined && !isFull
+            // --- 4. BOTÓN DE INSCRIPCIÓN (SOLO EN TAB INFO) ---
+            if (selectedTab == "info") {
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                    shadowElevation = 8.dp,
+                    color = Color.White
                 ) {
-                    Text(
-                        text = when {
-                            isJoined -> "Ya estás inscrito"
-                            isFull -> "Evento lleno"
-                            else -> "Unirme al evento"
-                        },
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Button(
+                        onClick = { if (!isJoined && !isFull) viewModel.joinEvent(e.id) },
+                        modifier = Modifier.fillMaxWidth().padding(20.dp).height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = when {
+                                isJoined -> Color.Gray
+                                isFull -> Color(0xFFE57373)
+                                else -> Color(0xFF6200EE)
+                            }
+                        ),
+                        enabled = !isJoined && !isFull
+                    ) {
+                        Text(
+                            text = when {
+                                event == null -> "Cargando..."
+                                isJoined -> "Ya estás inscrito"
+                                isFull -> "Evento lleno"
+                                else -> "Unirme al evento"
+                            },
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+@Composable
+fun EventHeader(e: Event, navController: NavController, organizerName: String) {
+    Box(modifier = Modifier.fillMaxWidth().height(260.dp)) {
+        AsyncImage(
+            model = e.imageUrl,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Box(
+            modifier = Modifier.fillMaxSize().background(
+                Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)))
+            )
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.9f)) {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.Black)
+                }
+            }
+            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.9f)) {
+                IconButton(onClick = { /* Share */ }) {
+                    Icon(Icons.Default.Share, contentDescription = null, tint = Color.Black)
+                }
+            }
+        }
+
+        Column(modifier = Modifier.align(Alignment.BottomStart).padding(24.dp)) {
+            Badge(containerColor = Color(0xFF7C4DFF), contentColor = Color.White) {
+                Text(e.category, modifier = Modifier.padding(4.dp))
+            }
+            Text(
+                text = e.title,
+                color = Color.White,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Organizado por $organizerName",
+                color = Color.White.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
 fun formatLongToDate(time: Long): String {
     val date = Date(time)
     val format = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
