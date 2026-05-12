@@ -40,17 +40,22 @@ class ProfileViewModel @Inject constructor(
 
     fun updateProfile(newName: String, newBio: String) {
         val uid = auth.currentUser?.uid ?: return
+        // Calculamos la nueva inicial basada en el nombre que ha puesto
+        val newInitials = if (newName.isNotBlank()) newName.take(1).uppercase() else "U"
+
         viewModelScope.launch {
             try {
                 firestore.collection("users").document(uid)
                     .update(
                         "displayName", newName,
-                        "bio", newBio
+                        "bio", newBio,
+                        "initials", newInitials // Actualizamos también las iniciales
                     ).await()
 
                 userState = userState?.copy(
                     displayName = newName,
-                    bio = newBio
+                    bio = newBio,
+                    initials = newInitials
                 )
             } catch (e: Exception) {
                 println("Error al actualizar perfil: ${e.message}")

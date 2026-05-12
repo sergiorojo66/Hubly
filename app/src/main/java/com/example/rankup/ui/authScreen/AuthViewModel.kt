@@ -1,5 +1,6 @@
 package com.example.rankup.ui.authScreen
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -115,7 +116,7 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private fun performGoogleSignIn(context: android.content.Context) {
+    private fun performGoogleSignIn(context: Context) {
         viewModelScope.launch {
             state = state.copy(isLoading = true, error = null)
             val credentialManager = CredentialManager.create(context)
@@ -155,21 +156,34 @@ class AuthViewModel @Inject constructor(
         val currentUser = firebaseAuth.currentUser ?: return
         val uid = currentUser.uid
         val email = currentUser.email ?: ""
-        val sanitizedUsername = "@" + email.substringBefore("@").lowercase()
-        val defaultName = "USER${uid.take(10)}"
+
+        // Generamos un username único inicial basado en el email (ej: @mrossi)
+        val sanitizedUsername = "@" + email.substringBefore("@").lowercase().replace(".", "_")
+
+        // PRIORIDAD:
+        // 1. Nombre de Google/Firebase
+        // 2. Nombre escrito en el campo de texto (si lo tienes en el State)
+        // 3. Un USER_ID genérico
+        val defaultName = currentUser.displayName
+            ?: if (state.name.isNotBlank()) state.name
+            else "Usuario ${uid.take(5)}"
 
         viewModelScope.launch {
             try {
                 val userRef = firestore.collection("users").document(uid)
                 val doc = userRef.get().await()
 
+                // Solo creamos el documento si NO existe.
+                // Si ya existe, no tocamos nada para no sobreescribir los cambios del usuario.
                 if (!doc.exists()) {
                     val newUser = User(
                         id = uid,
                         username = sanitizedUsername,
                         displayName = defaultName,
                         email = email,
-                        initials = defaultName.take(2).uppercase()
+                        initials = defaultName.take(1).uppercase(),
+                        bio = "¡Hola! Soy nuevo en RankUp.", // O Hubly, según tu TFG
+                        rating = 5.0
                     )
                     userRef.set(newUser).await()
                 }

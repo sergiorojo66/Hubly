@@ -1,10 +1,12 @@
 package com.example.rankup.data.repository
 
 import android.util.Log
+import com.example.rankup.domain.model.ChatMessage
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.repository.EventRepository
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -80,5 +82,24 @@ class EventRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    override fun getChatMessages(eventId: String): Flow<List<ChatMessage>> = callbackFlow {
+        val subscription = firestore.collection("events")
+            .document(eventId)
+            .collection("messages")
+            .orderBy("timestamp", Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, _ ->
+                val msgs = snapshot?.documents?.mapNotNull { it.toObject(ChatMessage::class.java) } ?: emptyList()
+                trySend(msgs) // Enviamos los mensajes al Flow
+            }
+        awaitClose { subscription.remove() } // Limpiamos la conexión al cerrar
+    }
+
+    override suspend fun sendMessage(eventId: String, message: ChatMessage) {
+        firestore.collection("events")
+            .document(eventId)
+            .collection("messages")
+            .add(message).await()
     }
 }
