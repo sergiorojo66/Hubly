@@ -6,11 +6,14 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rankup.domain.model.Event
+import com.example.rankup.domain.model.RankingUser
 import com.example.rankup.domain.model.enums.EventCategory
 import com.example.rankup.domain.repository.EventRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
@@ -58,7 +61,11 @@ class CreateEventViewModel @Inject constructor(
     fun createEvent(onSuccess: () -> Unit) {
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            val currentUserId = auth.currentUser?.uid ?: ""
+            val currentUserId = auth.currentUser?.uid ?: return@launch
+
+            // 1. Obtener el nombre real del creador antes de crear el evento
+            val userDoc = FirebaseFirestore.getInstance().collection("users").document(currentUserId).get().await()
+            val realName = userDoc.getString("displayName") ?: "Organizador"
 
             val categoryImageUrl = when (state.category) {
                 EventCategory.SPORTS -> "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=500"
@@ -82,7 +89,24 @@ class CreateEventViewModel @Inject constructor(
                 participantsIds = listOf(currentUserId)
             )
 
-            eventRepository.createEvent(newEvent).onSuccess {
+            // 2. Crear el evento y recibir el ID generado
+            eventRepository.createEvent(newEvent).onSuccess { generatedId ->
+                val creatorRanking = RankingUser(
+                    id = currentUserId,
+                    userName = realName, // Ahora usa su nombre real
+                    points = 0,
+                    level = 1
+                )
+
+                // 3. Crear el ranking usando el ID generado (generatedId)
+                FirebaseFirestore.getInstance()
+                    .collection("events")
+                    .document(generatedId) // <--- IMPORTANTE: Usar el ID que devuelve el repo
+                    .collection("rankings")
+                    .document(currentUserId)
+                    .set(creatorRanking)
+                    .await() // Esperamos a que se cree para evitar race conditions
+
                 onSuccess()
             }.onFailure {
                 state = state.copy(error = "Error al guardar el evento", isLoading = false)
