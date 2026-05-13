@@ -99,18 +99,39 @@ class EventRepositoryImpl @Inject constructor(
             .document(eventId)
             .collection("messages")
             .orderBy("timestamp", Query.Direction.ASCENDING)
-            .addSnapshotListener { snapshot, _ ->
-                val msgs = snapshot?.documents?.mapNotNull { it.toObject(ChatMessage::class.java) } ?: emptyList()
-                trySend(msgs) // Enviamos los mensajes al Flow
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+
+                val msgs = snapshot?.documents?.mapNotNull { doc ->
+                    // Mapeamos el objeto y, si por alguna razón el ID viniera vacío, lo recuperamos del nombre del documento
+                    doc.toObject(ChatMessage::class.java)?.copy(id = doc.id)
+                } ?: emptyList()
+
+                trySend(msgs)
             }
-        awaitClose { subscription.remove() } // Limpiamos la conexión al cerrar
+        awaitClose { subscription.remove() }
     }
 
+    // En EventRepositoryImpl.kt
+
     override suspend fun sendMessage(eventId: String, message: ChatMessage) {
-        firestore.collection("events")
-            .document(eventId)
-            .collection("messages")
-            .add(message).await()
+        try {
+            val messagesCollection = firestore.collection("events")
+                .document(eventId)
+                .collection("messages")
+
+            // 1. Creamos una referencia de documento vacía para obtener la ID
+            val newDocRef = messagesCollection.document()
+
+            // 2. Copiamos el mensaje con la ID del documento recién creado
+            val messageWithId = message.copy(id = newDocRef.id)
+
+            // 3. Guardamos el objeto completo (ahora el campo 'id' en Firebase tendrá valor)
+            newDocRef.set(messageWithId).await()
+        } catch (e: Exception) {
+            Log.e("Repository", "Error enviando mensaje: ${e.message}")
+            throw e
+        }
     }
 
     override suspend fun leaveEvent(eventId: String, userId: String): Result<Unit> {
