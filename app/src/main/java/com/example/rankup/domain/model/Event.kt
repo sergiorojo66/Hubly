@@ -13,6 +13,7 @@ data class Event(
     @get:PropertyName("private")
     @PropertyName("private")
     val isPrivate: Boolean = false,
+    val password: String = "",
 
     val imageUrl: String = "",
     val organizer: String = "",
