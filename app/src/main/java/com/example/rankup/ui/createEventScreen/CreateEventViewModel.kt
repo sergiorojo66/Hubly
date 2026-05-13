@@ -27,6 +27,7 @@ class CreateEventViewModel @Inject constructor(
     val isFormValid: Boolean
         get() = state.title.isNotBlank() &&
                 state.location.isNotBlank() &&
+                (!state.isPrivate || state.password.length >= 4) &&
                 state.date > 0L
 
     fun onTitleChange(newValue: String) { state = state.copy(title = newValue) }
@@ -82,6 +83,7 @@ class CreateEventViewModel @Inject constructor(
                 location = state.location,
                 date = state.date,
                 isPrivate = state.isPrivate,
+                password = if (state.isPrivate) state.password else "", // <--- AÑADE ESTA LÍNEA
                 imageUrl = categoryImageUrl,
                 organizer = currentUserId,
                 maxParticipants = state.maxParticipants.toIntOrNull(),
@@ -124,6 +126,11 @@ class CreateEventViewModel @Inject constructor(
         }
         state = state.copy(selectedModules = currentModules)
     }
+
+    fun onPasswordChange(newValue: String) {
+        state = state.copy(password = newValue)
+    }
+
 }
 
 data class CreateEventState(
@@ -137,5 +144,6 @@ data class CreateEventState(
     val selectedModules: Set<String> = setOf("info"),
     val isLoading: Boolean = false,
     val isPrivate: Boolean = false,
+    val password: String = "",
     val error: String? = null
 )

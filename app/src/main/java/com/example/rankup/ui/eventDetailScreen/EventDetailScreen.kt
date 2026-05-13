@@ -46,6 +46,8 @@ fun EventDetailScreen(
     val errorMessage by viewModel.error.collectAsState()
     val context = LocalContext.current
     val organizerName by viewModel.organizerName.collectAsState()
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var passwordInput by remember { mutableStateOf("") }
 
     LaunchedEffect(eventId) {
         viewModel.loadEvent(eventId)
@@ -141,7 +143,15 @@ fun EventDetailScreen(
                     val isFull = (event?.participantsIds?.size ?: 0) >= (event?.maxParticipants ?: Int.MAX_VALUE)
 
                     Button(
-                        onClick = { if (!isFull) event?.let { viewModel.joinEvent(it.id) } },
+                        onClick = {
+                            if (!isFull) {
+                                if (event?.isPrivate == true) {
+                                    showPasswordDialog = true // Abrir diálogo si es privado
+                                } else {
+                                    event?.let { viewModel.joinEvent(it.id) }
+                                }
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(20.dp)
@@ -207,6 +217,42 @@ fun EventDetailScreen(
                     },
                     containerColor = Color.White,
                     shape = RoundedCornerShape(16.dp)
+                )
+            }
+            if (showPasswordDialog) {
+                AlertDialog(
+                    onDismissRequest = { showPasswordDialog = false },
+                    title = { Text("Evento Privado") },
+                    text = {
+                        Column {
+                            Text("Introduce la contraseña para unirte:")
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = passwordInput,
+                                onValueChange = { passwordInput = it },
+                                label = { Text("Contraseña") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            if (passwordInput == event?.password) { // Validación
+                                showPasswordDialog = false
+                                event?.let { viewModel.joinEvent(it.id) }
+                            } else {
+                                Toast.makeText(context, "Contraseña incorrecta", Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Text("Validar y Unirme", fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showPasswordDialog = false }) {
+                            Text("Cancelar")
+                        }
+                    }
                 )
             }
         }

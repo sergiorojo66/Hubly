@@ -200,6 +200,24 @@ fun CreateEventScreen(
                     )
                 }
             }
+            if (state.isPrivate) {
+                CreateEventCard {
+                    Text("Seguridad del evento", fontWeight = FontWeight.Bold, color = Black)
+                    HublyTextField(
+                        label = "Contraseña de acceso *",
+                        value = state.password,
+                        placeholder = "Mínimo 4 caracteres",
+                        singleLine = true,
+                        onValueChange = { viewModel.onPasswordChange(it) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    )
+                    Text(
+                        "Los usuarios deberán introducirla para unirse.",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
 
             CreateEventCard {
                 Text(
