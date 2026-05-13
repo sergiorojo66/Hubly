@@ -17,6 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.example.rankup.ui.createEventScreen.CreateEventScreen
 import com.example.rankup.ui.eventDetailScreen.EventDetailScreen
 import com.example.rankup.ui.exploreScreen.ExploreScreen
@@ -63,6 +64,19 @@ fun MainScreen(onLogout: () -> Unit) {
             composable(
                 route = Screen.EventDetail.route,
                 arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
+                EventDetailScreen(eventId = eventId, navController = navController)
+            }
+            composable(
+                route = "eventDetail/{eventId}",
+                // Definimos el Deep Link para esta ruta
+                deepLinks = listOf(
+                    navDeepLink { uriPattern = "https://rankup.com/event/{eventId}" }
+                ),
+                arguments = listOf(
+                    navArgument("eventId") { type = NavType.StringType }
+                )
             ) { backStackEntry ->
                 val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
                 EventDetailScreen(eventId = eventId, navController = navController)

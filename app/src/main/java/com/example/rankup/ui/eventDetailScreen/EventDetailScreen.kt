@@ -1,5 +1,6 @@
 package com.example.rankup.ui.eventDetailScreen
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -77,9 +78,9 @@ fun EventDetailScreen(
                     isJoined = isJoined,
                     isOrganizer = isOrganizer,
                     onLeaveEvent = { showLeaveDialog = true }, // Cambiado: solo abre el diálogo
-                    onDeleteEvent = { showDeleteDialog = true } // Cambiado: solo abre el diálogo
+                    onDeleteEvent = { showDeleteDialog = true }, // Cambiado: solo abre el diálogo
+                    onShareEvent = { shareEvent(context, e) } // <--- Aquí pasas el context y el evento
                 )
-
                 // --- 2. TABS (ESTÁTICAS) ---
                 ScrollableTabRow(
                     selectedTabIndex = getTabIndex(selectedTab, e.modules),
@@ -177,7 +178,7 @@ fun EventDetailScreen(
                     },
                     dismissButton = {
                         TextButton(onClick = { showDeleteDialog = false }) {
-                            Text("Cancelar", color = Color.Black)
+                            Text("Cancelar", color = Color.Gray)
                         }
                     },
                     containerColor = Color.White,
@@ -196,12 +197,12 @@ fun EventDetailScreen(
                             showLeaveDialog = false
                             event?.let { viewModel.leaveEvent(it.id) }
                         }) {
-                            Text("Confirmar", color = Color(0xFF6200EE), fontWeight = FontWeight.Bold)
+                            Text("Confirmar", color = Color.Red, fontWeight = FontWeight.Bold)
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { showLeaveDialog = false }) {
-                            Text("Volver", color = Color.Black)
+                            Text("Volver", color = Color.Gray)
                         }
                     },
                     containerColor = Color.White,
@@ -220,7 +221,8 @@ fun EventHeader(
     isJoined: Boolean,
     isOrganizer: Boolean,
     onLeaveEvent: () -> Unit,
-    onDeleteEvent: () -> Unit
+    onDeleteEvent: () -> Unit,
+    onShareEvent: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -292,7 +294,7 @@ fun EventHeader(
                             },
                             onClick = {
                                 expanded = false
-                                // Tu lógica de compartir aquí
+                                onShareEvent()
                             }
                         )
 
@@ -480,5 +482,23 @@ fun LockedModulePlaceholder(moduleName: String) {
             color = Color.Gray
         )
     }
+}
+
+fun shareEvent(context: android.content.Context, event: Event) {
+    // Creamos la URL con el ID del evento
+    val eventLink = "https://rankup.com/event/${event.id}"
+
+    val sendIntent: Intent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_TEXT,
+            "¡Únete a mi evento en Hubly!\n\n" +
+                    "📌 ${event.title}\n" +
+                    "🔗 Haz clic aquí para ver los detalles: $eventLink"
+        )
+        type = "text/plain"
+    }
+
+    val shareIntent = Intent.createChooser(sendIntent, "Compartir evento")
+    context.startActivity(shareIntent)
 }
 
