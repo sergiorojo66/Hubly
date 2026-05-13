@@ -8,13 +8,16 @@ import androidx.lifecycle.viewModelScope
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.model.enums.EventCategory
 import com.example.rankup.domain.repository.EventRepository
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
 class ExploreViewModel @Inject constructor(
-    private val eventRepository: EventRepository
+    private val eventRepository: EventRepository,
+    private val firestore: FirebaseFirestore
 ) : ViewModel() {
 
     var state by mutableStateOf(ExploreState())
@@ -99,6 +102,18 @@ class ExploreViewModel @Inject constructor(
             selectedCategories = categories
         )
         filterEvents()
+    }
+
+    fun searchEventById(eventId: String, onFound: (String) -> Unit) {
+        viewModelScope.launch {
+            // Buscas directamente el documento en Firestore
+            val doc = firestore.collection("events").document(eventId).get().await()
+            if (doc.exists()) {
+                onFound(eventId) // Si existe, devuelves el ID para navegar
+            } else {
+                //_error.value = "Evento no encontrado"
+            }
+        }
     }
 }
 
