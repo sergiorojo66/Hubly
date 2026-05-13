@@ -59,10 +59,25 @@ class EventDetailViewModel @Inject constructor(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
 
-                val list = snapshot?.documents?.mapIndexed { index, doc ->
-                    val user = doc.toObject(RankingUser::class.java)
-                    user?.copy(position = index + 1) ?: RankingUser()
-                } ?: emptyList()
+                val documents = snapshot?.documents ?: emptyList()
+                var currentPosition = 1
+
+                val list = documents.mapIndexed { index, doc ->
+                    val user = doc.toObject(RankingUser::class.java) ?: RankingUser()
+
+                    // Lógica de empate
+                    if (index > 0) {
+                        val previousPoints = documents[index - 1].getLong("points") ?: 0L
+                        val currentPoints = doc.getLong("points") ?: 0L
+
+                        // Si NO hay empate, la posición sube
+                        if (currentPoints < previousPoints) {
+                            currentPosition++
+                        }
+                    }
+
+                    user.copy(position = currentPosition)
+                }
 
                 _rankings.value = list
             }
@@ -72,14 +87,26 @@ class EventDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val userId = auth.currentUser?.uid ?: return@launch
 
-            repository.joinEvent(eventId, userId).onSuccess {
-                _error.value = null
-            }.onFailure { error ->
-                if (error.message == "EVENT_FULL") {
-                    _error.value = "Lo sentimos, el evento está lleno"
-                } else {
-                    _error.value = "Error al unirse al evento"
+            try {
+                // Obtenemos el nombre real del usuario de nuestra colección 'users'
+                val userDoc = firestore.collection("users").document(userId).get().await()
+                val hublyUser = userDoc.toObject(User::class.java)
+                val nameToRegister = hublyUser?.displayName ?: "Usuario"
+
+                // Pasamos el nombre al repositorio
+                repository.joinEvent(eventId, userId, nameToRegister).onSuccess {
+                    _error.value = null
+                    // Al unirse con éxito, podrías recargar el ranking
+                    loadRankings(eventId)
+                }.onFailure { error ->
+                    _error.value = when(error.message) {
+                        "EVENT_FULL" -> "El evento está lleno"
+                        "ALREADY_JOINED" -> "Ya estás en este evento"
+                        else -> "Error al unirse"
+                    }
                 }
+            } catch (e: Exception) {
+                _error.value = "Error de conexión"
             }
         }
     }
@@ -141,6 +168,48 @@ class EventDetailViewModel @Inject constructor(
                 _organizerName.value = user?.displayName ?: "Usuario"
             } catch (e: Exception) {
                 _organizerName.value = "Organizador"
+            }
+        }
+    }
+
+    fun updateUserPoints(userId: String, additionalPoints: Int) {
+        val eventId = _event.value?.id ?: return
+
+        viewModelScope.launch {
+            try {
+                val userRankingRef = firestore.collection("events")
+                    .document(eventId)
+                    .collection("rankings")
+                    .document(userId)
+
+                // Usamos una transacción o FieldValue.increment para que sea seguro
+                userRankingRef.update("points", com.google.firebase.firestore.FieldValue.increment(additionalPoints.toLong()))
+                    .await()
+
+                // Opcional: mostrar un mensaje de éxito o actualizar localmente
+            } catch (e: Exception) {
+                _error.value = "Error al actualizar puntos: ${e.message}"
+            }
+        }
+    }
+
+    fun leaveEvent(eventId: String) {
+        viewModelScope.launch {
+            val userId = auth.currentUser?.uid ?: return@launch
+            repository.leaveEvent(eventId, userId).onSuccess {
+                // Firestore actualizará el isUserJoined automáticamente si usas snapshots
+            }.onFailure {
+                _error.value = "No se pudo anular la inscripción"
+            }
+        }
+    }
+
+    fun deleteEvent(eventId: String, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            repository.deleteEvent(eventId).onSuccess {
+                onComplete()
+            }.onFailure {
+                _error.value = "Error al eliminar el evento"
             }
         }
     }

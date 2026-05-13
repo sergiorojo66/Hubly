@@ -37,6 +37,11 @@ fun EventDetailScreen(
     val event by viewModel.event.collectAsState()
     var selectedTab by remember { mutableStateOf("info") }
     val isJoined by viewModel.isUserJoined.collectAsState()
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showLeaveDialog by remember { mutableStateOf(false) }
+    val currentUserId = viewModel.currentUserId
+    val isOrganizer = event?.organizer == currentUserId
     val errorMessage by viewModel.error.collectAsState()
     val context = LocalContext.current
     val organizerName by viewModel.organizerName.collectAsState()
@@ -65,7 +70,15 @@ fun EventDetailScreen(
             Column(modifier = Modifier.fillMaxSize()) {
 
                 // --- 1. CABECERA (ESTÁTICA) ---
-                EventHeader(e, navController, organizerName)
+                EventHeader(
+                    e = e,
+                    navController = navController,
+                    organizerName = organizerName,
+                    isJoined = isJoined,
+                    isOrganizer = isOrganizer,
+                    onLeaveEvent = { showLeaveDialog = true }, // Cambiado: solo abre el diálogo
+                    onDeleteEvent = { showDeleteDialog = true } // Cambiado: solo abre el diálogo
+                )
 
                 // --- 2. TABS (ESTÁTICAS) ---
                 ScrollableTabRow(
@@ -116,45 +129,101 @@ fun EventDetailScreen(
                 }
             }
 
-            // --- 4. BOTÓN DE INSCRIPCIÓN (SOLO EN TAB INFO) ---
-            if (selectedTab == "info") {
+            if (selectedTab == "info" && !isJoined) { // <--- Condición actualizada
                 Surface(
-                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),
                     shadowElevation = 8.dp,
                     color = Color.White
                 ) {
+                    val isFull = (event?.participantsIds?.size ?: 0) >= (event?.maxParticipants ?: Int.MAX_VALUE)
+
                     Button(
-                        onClick = { if (!isJoined && !isFull) viewModel.joinEvent(e.id) },
-                        modifier = Modifier.fillMaxWidth().padding(20.dp).height(56.dp),
+                        onClick = { if (!isFull) event?.let { viewModel.joinEvent(it.id) } },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                            .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = when {
-                                isJoined -> Color.Gray
-                                isFull -> Color(0xFFE57373)
-                                else -> Color(0xFF6200EE)
-                            }
+                            containerColor = if (isFull) Color(0xFFE57373) else Color(0xFF6200EE),
+                            disabledContainerColor = Color.Gray
                         ),
-                        enabled = !isJoined && !isFull
+                        enabled = !isFull
                     ) {
                         Text(
-                            text = when {
-                                event == null -> "Cargando..."
-                                isJoined -> "Ya estás inscrito"
-                                isFull -> "Evento lleno"
-                                else -> "Unirme al evento"
-                            },
+                            text = if (isFull) "Evento lleno" else "Unirme al evento",
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text("¿Eliminar evento?", color = Color.Red) },
+                    text = { Text("Esta acción no se puede deshacer. Se borrarán todos los datos y rankings asociados.", color = Color.Black) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showDeleteDialog = false
+                            event?.let { e ->
+                                viewModel.deleteEvent(e.id) { navController.popBackStack() }
+                            }
+                        }) {
+                            Text("Eliminar", color = Color.Red, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("Cancelar", color = Color.Black)
+                        }
+                    },
+                    containerColor = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+
+            // --- DIÁLOGO DE ANULAR INSCRIPCIÓN ---
+            if (showLeaveDialog) {
+                AlertDialog(
+                    onDismissRequest = { showLeaveDialog = false },
+                    title = { Text("Anular inscripción", color = Color.Red) },
+                    text = { Text("¿Estás seguro de que quieres salirte de este evento? Perderás tu posición en el ranking.", color = Color.Black) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showLeaveDialog = false
+                            event?.let { viewModel.leaveEvent(it.id) }
+                        }) {
+                            Text("Confirmar", color = Color(0xFF6200EE), fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showLeaveDialog = false }) {
+                            Text("Volver", color = Color.Black)
+                        }
+                    },
+                    containerColor = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun EventHeader(e: Event, navController: NavController, organizerName: String) {
+fun EventHeader(
+    e: Event,
+    navController: NavController,
+    organizerName: String,
+    isJoined: Boolean,
+    isOrganizer: Boolean,
+    onLeaveEvent: () -> Unit,
+    onDeleteEvent: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxWidth().height(260.dp)) {
         AsyncImage(
             model = e.imageUrl,
@@ -162,43 +231,123 @@ fun EventHeader(e: Event, navController: NavController, organizerName: String) {
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
+
+        // Degradado más oscuro en la parte superior para que los botones blancos resalten
         Box(
             modifier = Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)))
+                Brush.verticalGradient(
+                    colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                    startY = 0f
+                )
             )
         )
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.9f)) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.Black)
-                }
+            // Botón Atrás
+            IconButton(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.background(Color.White.copy(alpha = 0.2f), CircleShape)
+            ) {
+                Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
             }
-            Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.9f)) {
-                IconButton(onClick = { /* Share */ }) {
-                    Icon(Icons.Default.Share, contentDescription = null, tint = Color.Black)
+
+            // ... dentro de EventHeader
+
+            Box {
+                IconButton(
+                    onClick = { expanded = true },
+                    modifier = Modifier.background(Color.White.copy(alpha = 0.2f), CircleShape)
+                ) {
+                    Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.White)
+                }
+
+                // Usamos MaterialTheme envolviendo el menú para quitar esas esquinas feas
+                MaterialTheme(
+                    shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(12.dp))
+                ) {
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(Color.White)
+                        // Al definir el background aquí dentro del shape, se eliminan los bordes negros
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Compartir evento",
+                                    color = Color.Black, // Texto ahora en negro
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Share,
+                                    contentDescription = null,
+                                    tint = Color(0xFF6200EE) // Mantenemos el lila para darle vida
+                                )
+                            },
+                            onClick = {
+                                expanded = false
+                                // Tu lógica de compartir aquí
+                            }
+                        )
+
+                        if (isJoined && !isOrganizer) {
+                            DropdownMenuItem(
+                                text = { Text("Anular inscripción", color = Color(0xFFE53935)) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.ExitToApp,
+                                        contentDescription = null,
+                                        tint = Color(0xFFE53935)
+                                    )
+                                },
+                                onClick = {
+                                    expanded = false
+                                    onLeaveEvent()
+                                }
+                            )
+                        }
+
+                        if (isOrganizer) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Eliminar evento",
+                                        color = Color.Red,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = null,
+                                        tint = Color.Red
+                                    )
+                                },
+                                onClick = {
+                                    expanded = false
+                                    onDeleteEvent()
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
 
+        // Info del evento en la parte inferior (igual que antes)
         Column(modifier = Modifier.align(Alignment.BottomStart).padding(24.dp)) {
             Badge(containerColor = Color(0xFF7C4DFF), contentColor = Color.White) {
-                Text(e.category, modifier = Modifier.padding(4.dp))
+                Text(e.category, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
             }
-            Text(
-                text = e.title,
-                color = Color.White,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Organizado por $organizerName",
-                color = Color.White.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.bodySmall
-            )
+            Text(e.title, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text("Organizado por $organizerName", color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
