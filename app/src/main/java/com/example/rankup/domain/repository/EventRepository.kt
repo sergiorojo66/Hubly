@@ -13,4 +13,5 @@ interface EventRepository {
     suspend fun sendMessage(eventId: String, message: ChatMessage)
     suspend fun leaveEvent(eventId: String, userId: String): Result<Unit>
     suspend fun deleteEvent(eventId: String): Result<Unit>
+    suspend fun finishEvent(eventId: String): Result<Unit>
 }

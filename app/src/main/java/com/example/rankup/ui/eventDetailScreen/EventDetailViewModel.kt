@@ -213,5 +213,15 @@ class EventDetailViewModel @Inject constructor(
             }
         }
     }
+
+    fun finishEvent(eventId: String) {
+        viewModelScope.launch {
+            repository.finishEvent(eventId).onSuccess {
+                _error.value = "Evento finalizado correctamente"
+            }.onFailure {
+                _error.value = "Error al finalizar el evento"
+            }
+        }
+    }
 }
 

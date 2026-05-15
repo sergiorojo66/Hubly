@@ -13,7 +13,14 @@ data class Event(
     @get:PropertyName("private")
     @PropertyName("private")
     val isPrivate: Boolean = false,
+
     val password: String = "",
+
+    // --- AÑADE ESTAS ANOTACIONES AQUÍ ---
+    @get:PropertyName("isFinished")
+    @PropertyName("isFinished")
+    val isFinished: Boolean = false,
+    // ------------------------------------
 
     val imageUrl: String = "",
     val organizer: String = "",

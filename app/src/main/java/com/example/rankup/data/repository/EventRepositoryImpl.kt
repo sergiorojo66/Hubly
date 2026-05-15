@@ -162,4 +162,16 @@ class EventRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override suspend fun finishEvent(eventId: String): Result<Unit> {
+        return try {
+            firestore.collection("events")
+                .document(eventId)
+                .update("isFinished", true) // Cambiamos el estado a true
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
