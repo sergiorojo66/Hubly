@@ -10,8 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -20,11 +22,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.rankup.domain.model.Event
+import com.example.rankup.domain.model.User
 import com.example.rankup.ui.eventDetailScreen.components.ChatSection
 import com.example.rankup.ui.eventDetailScreen.components.RankingSection
+import com.example.rankup.ui.profileScreen.UserProfileDialog
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -50,6 +57,7 @@ fun EventDetailScreen(
     var passwordInput by remember { mutableStateOf("") }
     val isFinished = event?.isFinished ?: false
     var showFinishDialog by remember { mutableStateOf(false) } // Nuevo estado
+    var selectedUser by remember { mutableStateOf<User?>(null) }
 
     LaunchedEffect(eventId) {
         viewModel.loadEvent(eventId)
@@ -75,16 +83,20 @@ fun EventDetailScreen(
             Column(modifier = Modifier.fillMaxSize()) {
 
                 // --- 1. CABECERA (ESTÁTICA) ---
+                // --- 1. CABECERA (ESTÁTICA) ---
                 EventHeader(
                     e = e,
                     navController = navController,
                     organizerName = organizerName,
                     isJoined = isJoined,
                     isOrganizer = isOrganizer,
-                    onLeaveEvent = { showLeaveDialog = true }, // Cambiado: solo abre el diálogo
-                    onDeleteEvent = { showDeleteDialog = true }, // Cambiado: solo abre el diálogo
-                    onShareEvent = { shareEvent(context, e) }, // <--- Aquí pasas el context y el evento
-                    onFinishEvent = { showFinishDialog = true } // <--- CAMBIO: Ahora abre el diálogo
+                    onLeaveEvent = { showLeaveDialog = true },
+                    onDeleteEvent = { showDeleteDialog = true },
+                    onShareEvent = { shareEvent(context, e) },
+                    onFinishEvent = { showFinishDialog = true },
+                    // CAMBIO: Ahora pasamos la función para que el Header pueda setear al usuario
+                    onOrganizerSelected = { user -> selectedUser = user },
+                    loadUserProfile = { userId, onResult -> viewModel.loadUserProfile(userId, onResult) }
                 )
                 // --- 2. TABS (ESTÁTICAS) ---
                 ScrollableTabRow(
@@ -293,6 +305,12 @@ fun EventDetailScreen(
                     shape = RoundedCornerShape(16.dp)
                 )
             }
+            selectedUser?.let { user ->
+                UserProfileDialog(
+                    user = user,
+                    onDismiss = { selectedUser = null }
+                )
+            }
         }
     }
 }
@@ -307,7 +325,9 @@ fun EventHeader(
     onLeaveEvent: () -> Unit,
     onDeleteEvent: () -> Unit,
     onShareEvent: () -> Unit,
-    onFinishEvent: () -> Unit
+    onFinishEvent: () -> Unit,
+    onOrganizerSelected: (User) -> Unit, // Nuevo parámetro
+    loadUserProfile: (String, (User) -> Unit) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -440,12 +460,27 @@ fun EventHeader(
         }
 
         // Info del evento en la parte inferior (igual que antes)
+        // Dentro de EventHeader, en la parte inferior donde está la info
         Column(modifier = Modifier.align(Alignment.BottomStart).padding(24.dp)) {
             Badge(containerColor = Color(0xFF7C4DFF), contentColor = Color.White) {
                 Text(e.category, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
             }
             Text(e.title, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("Organizado por $organizerName", color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodySmall)
+
+            // MODIFICACIÓN AQUÍ:
+            Text(
+                text = "Organizado por $organizerName",
+                color = Color.White.copy(alpha = 0.9f),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable {
+                        loadUserProfile(e.organizer) { user ->
+                            onOrganizerSelected(user) // Usamos el callback aquí
+                        }
+                    }
+                    .padding(vertical = 2.dp)
+            )
         }
     }
 }

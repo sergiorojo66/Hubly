@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
+import kotlin.text.get
 
 @HiltViewModel
 class EventDetailViewModel @Inject constructor(
@@ -220,6 +221,21 @@ class EventDetailViewModel @Inject constructor(
                 _error.value = "Evento finalizado correctamente"
             }.onFailure {
                 _error.value = "Error al finalizar el evento"
+            }
+        }
+    }
+
+    fun loadUserProfile(userId: String, onResult: (User) -> Unit) {
+        viewModelScope.launch {
+            try {
+                // Buscamos el documento del usuario en la colección "users"
+                val doc = firestore.collection("users").document(userId).get().await()
+                val user = doc.toObject(User::class.java)
+                if (user != null) {
+                    onResult(user)
+                }
+            } catch (e: Exception) {
+                _error.value = "No se pudo cargar el perfil"
             }
         }
     }

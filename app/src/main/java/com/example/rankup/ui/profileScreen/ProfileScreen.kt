@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
@@ -32,6 +33,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import com.example.rankup.domain.model.User
 
 @Composable
 fun ProfileScreen(
@@ -279,4 +284,81 @@ fun ProfileMenuButton(icon: ImageVector, label: String, onClick: () -> Unit) {
             Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
         }
     }
+}
+
+@Composable
+fun UserProfileDialog(
+    user: User, // Recibe el objeto completo
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar", color = Color(0xFF6200EE), fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(28.dp),
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Avatar usando las iniciales de tu modelo
+                Surface(
+                    modifier = Modifier.size(90.dp),
+                    shape = CircleShape,
+                    color = Color(0xFF7C4DFF) // Color corporativo Hubly
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = user.initials.uppercase(),
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Nombre Público (displayName)
+                Text(
+                    text = user.displayName,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+
+                // Nombre único (username)
+                Text(
+                    text = user.username,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6200EE),
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Bio del usuario
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = user.bio,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.DarkGray,
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    )
 }
