@@ -48,6 +48,8 @@ fun EventDetailScreen(
     val organizerName by viewModel.organizerName.collectAsState()
     var showPasswordDialog by remember { mutableStateOf(false) }
     var passwordInput by remember { mutableStateOf("") }
+    val isFinished = event?.isFinished ?: false
+    var showFinishDialog by remember { mutableStateOf(false) } // Nuevo estado
 
     LaunchedEffect(eventId) {
         viewModel.loadEvent(eventId)
@@ -81,7 +83,8 @@ fun EventDetailScreen(
                     isOrganizer = isOrganizer,
                     onLeaveEvent = { showLeaveDialog = true }, // Cambiado: solo abre el diálogo
                     onDeleteEvent = { showDeleteDialog = true }, // Cambiado: solo abre el diálogo
-                    onShareEvent = { shareEvent(context, e) } // <--- Aquí pasas el context y el evento
+                    onShareEvent = { shareEvent(context, e) }, // <--- Aquí pasas el context y el evento
+                    onFinishEvent = { showFinishDialog = true } // <--- CAMBIO: Ahora abre el diálogo
                 )
                 // --- 2. TABS (ESTÁTICAS) ---
                 ScrollableTabRow(
@@ -159,12 +162,18 @@ fun EventDetailScreen(
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isFull) Color(0xFFE57373) else Color(0xFF6200EE),
-                            disabledContainerColor = Color.Gray
+                            contentColor = Color.White,
+                            disabledContainerColor = if (isFinished) Color(0xFF424242) else Color.Gray,
+                            disabledContentColor = Color.White
                         ),
-                        enabled = !isFull
+                        enabled = !isFull && !isFinished
                     ) {
                         Text(
-                            text = if (isFull) "Evento lleno" else "Unirme al evento",
+                            text = when {
+                                isFinished -> "Evento finalizado"
+                                isFull -> "Evento lleno"
+                                else -> "Unirme al evento"
+                            },
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
@@ -255,6 +264,35 @@ fun EventDetailScreen(
                     }
                 )
             }
+            if (showFinishDialog) {
+                AlertDialog(
+                    onDismissRequest = { showFinishDialog = false },
+                    title = { Text("¿Finalizar evento?", color = Color(0xFF4CAF50)) },
+                    text = {
+                        Text(
+                            "Una vez finalizado, nadie más podrá unirse y el ranking se guardará de forma permanente.",
+                            color = Color.Black
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showFinishDialog = false
+                            event?.let { e ->
+                                viewModel.finishEvent(e.id)
+                            }
+                        }) {
+                            Text("Finalizar", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showFinishDialog = false }) {
+                            Text("Cancelar", color = Color.Gray)
+                        }
+                    },
+                    containerColor = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
         }
     }
 }
@@ -268,7 +306,8 @@ fun EventHeader(
     isOrganizer: Boolean,
     onLeaveEvent: () -> Unit,
     onDeleteEvent: () -> Unit,
-    onShareEvent: () -> Unit
+    onShareEvent: () -> Unit,
+    onFinishEvent: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -381,6 +420,17 @@ fun EventHeader(
                                 onClick = {
                                     expanded = false
                                     onDeleteEvent()
+                                }
+                            )
+                        }
+                        // Busca esta parte dentro de EventHeader en tu EventDetailScreen.kt
+                        if (isOrganizer && !e.isFinished) {
+                            DropdownMenuItem(
+                                text = { Text("Finalizar evento", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold) },
+                                leadingIcon = { Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50)) },
+                                onClick = {
+                                    expanded = false
+                                    onFinishEvent() // <--- Llamamos al callback que pasamos por parámetro
                                 }
                             )
                         }

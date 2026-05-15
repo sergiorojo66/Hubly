@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
@@ -48,7 +49,10 @@ fun FeaturedEventCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically // Centra la imagen con el contenido
+        ) {
             AsyncImage(
                 model = event.imageUrl,
                 contentDescription = null,
@@ -59,37 +63,68 @@ fun FeaturedEventCard(
                 contentScale = ContentScale.Crop
             )
 
-            Column(modifier = Modifier.padding(12.dp).weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                modifier = Modifier
+                    .padding(end = 12.dp, top = 12.dp, bottom = 12.dp)
+                    .weight(1f)
+            ) {
+                // --- FILA DE TÍTULO Y CATEGORÍA ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = event.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        // fill = false permite que el texto ocupe solo lo necesario
+                        // y no empuje a la categoría fuera del Row
+                        modifier = Modifier.weight(1f, fill = false)
                     )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Surface(color = Color(0xFFF1F3F4), shape = RoundedCornerShape(8.dp)) {
+
+                    Spacer(modifier = Modifier.width(8.dp)) // Espacio mínimo entre ambos
+
+                    Surface(
+                        color = Color(0xFFF1F3F4),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.align(Alignment.Top) // Mantiene la categoría arriba
+                    ) {
                         Text(
                             text = event.category,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            maxLines = 1 // Evita que la categoría se rompa en vertical
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
+                // --- UBICACIÓN ---
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-                    Text(" ${event.location}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(
+                        text = " ${event.location}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                // --- FECHA Y PARTICIPANTES ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = formatDate(event.date),
                         style = MaterialTheme.typography.bodySmall,
@@ -104,9 +139,7 @@ fun FeaturedEventCard(
                             modifier = Modifier.size(14.dp),
                             tint = Color.Gray
                         )
-
                         val participantesTexto = "${event.participantsIds.size}/${event.maxParticipants ?: "∞"}"
-
                         Text(
                             text = " $participantesTexto",
                             style = MaterialTheme.typography.bodySmall,
