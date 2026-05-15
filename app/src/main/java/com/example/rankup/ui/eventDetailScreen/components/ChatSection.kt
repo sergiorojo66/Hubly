@@ -1,5 +1,6 @@
 package com.example.rankup.ui.eventDetailScreen.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,7 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.rankup.domain.model.ChatMessage
+import com.example.rankup.domain.model.User
 import com.example.rankup.ui.eventDetailScreen.EventDetailViewModel
+import com.example.rankup.ui.profileScreen.UserProfileDialog
 
 @Composable
 fun ChatSection(viewModel: EventDetailViewModel) {
@@ -23,7 +26,10 @@ fun ChatSection(viewModel: EventDetailViewModel) {
     var messageText by remember { mutableStateOf("") }
     val scrollState = rememberLazyListState()
 
-    // Autoscroll al recibir mensajes
+    // Estado para el usuario seleccionado
+    var selectedUser by remember { mutableStateOf<User?>(null) }
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             scrollState.animateScrollToItem(messages.size - 1)
@@ -31,19 +37,28 @@ fun ChatSection(viewModel: EventDetailViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        // --- LISTA DE MENSAJES ---
         LazyColumn(
             state = scrollState,
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Solución al crash: Key única combinando timestamp e ID
             items(
                 items = messages,
                 key = { it.id.ifEmpty { it.timestamp.toString() + it.senderId } }
             ) { msg ->
                 val isMine = msg.senderId == viewModel.currentUserId
-                ChatBubble(msg, isMine)
+
+                ChatBubble(
+                    msg = msg,
+                    isMine = isMine,
+                    onNameClick = {
+                        // Aquí disparamos la carga del perfil del usuario
+                        // Como solo tienes el ID, usamos la función del ViewModel
+                        viewModel.loadUserProfile(msg.senderId) { user ->
+                            selectedUser = user
+                        }
+                    }
+                )
             }
         }
 
@@ -97,10 +112,20 @@ fun ChatSection(viewModel: EventDetailViewModel) {
             }
         }
     }
+    selectedUser?.let { user ->
+        UserProfileDialog(
+            user = user,
+            onDismiss = { selectedUser = null }
+        )
+    }
 }
 
 @Composable
-fun ChatBubble(msg: ChatMessage, isMine: Boolean) {
+fun ChatBubble(
+    msg: ChatMessage,
+    isMine: Boolean,
+    onNameClick: () -> Unit // Callback añadido
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isMine) Alignment.End else Alignment.Start
@@ -110,7 +135,9 @@ fun ChatBubble(msg: ChatMessage, isMine: Boolean) {
                 text = msg.senderName,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.DarkGray,
-                modifier = Modifier.padding(start = 8.dp, bottom = 2.dp)
+                modifier = Modifier
+                    .padding(start = 8.dp, bottom = 2.dp)
+                    .clickable { onNameClick() } // Ejecuta el callback
             )
         }
         Surface(
@@ -125,7 +152,6 @@ fun ChatBubble(msg: ChatMessage, isMine: Boolean) {
         ) {
             Text(
                 text = msg.message,
-                // Color del texto dentro de la burbuja
                 color = if (isMine) Color.White else Color.Black,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.bodyMedium

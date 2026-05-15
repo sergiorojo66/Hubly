@@ -14,14 +14,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.rankup.domain.model.Event
 import com.example.rankup.ui.homeScreen.components.CategoryChip
 import com.example.rankup.ui.homeScreen.components.FeaturedEventCard
 import com.example.rankup.ui.homeScreen.components.StatCard
+import com.example.rankup.ui.homeScreen.components.formatDate
 
 @Composable
 fun HomeScreen(
@@ -30,164 +33,194 @@ fun HomeScreen(
 ) {
     val events by viewModel.events.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
-
     var searchQuery by remember { mutableStateOf("") }
+
+    val activeEvents = events.filter { !it.isFinished && it.title.contains(searchQuery, ignoreCase = true) }
+    val upcomingEvents = activeEvents.takeLast(5)
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF8F9FA))
     ) {
+        // --- CABECERA MÁS COMPACTA ---
         item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(Color(0xFF7C4DFF), Color(0xFF6200EE))
-                        )
-                    )
-                    .padding(horizontal = 24.dp, vertical = 32.dp)
-            ) {
-                Column {
-                    Text(
-                        text = "Hubly",
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Organiza eventos, conecta personas",
-                        color = Color.White.copy(alpha = 0.8f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+            Box(modifier = Modifier.fillMaxWidth().height(130.dp)) { // Reducido de 220 a 180
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp) // Reducido de 180 a 150
+                        .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                        .background(Brush.verticalGradient(listOf(Color(0xFF7C4DFF), Color(0xFF6200EE))))
+                        .padding(horizontal = 24.dp, vertical = 20.dp)
+                ) {
+                    Column {
+                        Text("Hubly", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                        Text("Descubre y compite", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
 
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    OutlinedTextField(
+                // BARRA DE BÚSQUEDA MÁS ARRIBA
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 24.dp)
+                        .fillMaxWidth()
+                        .height(50.dp), // Un poco más fina
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(6.dp)
+                ) {
+                    TextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Buscar eventos...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.White, RoundedCornerShape(16.dp)),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
+                        placeholder = { Text("Buscar...", color = Color.Gray, style = MaterialTheme.typography.bodyMedium) },
+                        leadingIcon = { Icon(Icons.Default.Search, null, tint = Color(0xFF6200EE), modifier = Modifier.size(20.dp)) },
+                        modifier = Modifier.fillMaxSize(),
+                        colors = TextFieldDefaults.colors(
                             focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.DarkGray,
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent,
+                            unfocusedTextColor = Color.Black,
+                            focusedContainerColor = Color.White,
                             unfocusedContainerColor = Color.White,
-                            focusedContainerColor = Color.White
-                        )
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        singleLine = true
                     )
                 }
             }
         }
 
+        // --- ESTADÍSTICAS CON MENOS PADDING ---
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+            Card(
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp).fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(1.dp)
             ) {
-                StatCard(
-                    Icons.Default.TrendingUp,
-                    "${stats.activeEvents}",
-                    "Eventos",
-                    Color(0xFF6200EE),
-                    modifier = Modifier.weight(1f)
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                StatCard(
-                    Icons.Default.Group,
-                    stats.participants,
-                    "Personas",
-                    Color(0xFF3F51B5),
-                    modifier = Modifier.weight(1f)
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                StatCard(
-                    Icons.Default.EmojiEvents,
-                    "${stats.competitions}",
-                    "Torneos",
-                    Color(0xFFFFB300),
-                    modifier = Modifier.weight(1f)
-                )
+                Row(
+                    modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    SmallStat(Icons.Default.TrendingUp, "${stats.activeEvents}", "Eventos")
+                    VerticalDivider(modifier = Modifier.height(25.dp).align(Alignment.CenterVertically), thickness = 1.dp, color = Color(0xFFEEEEEE))
+                    SmallStat(Icons.Default.Group, stats.participants, "Hublers")
+                    VerticalDivider(modifier = Modifier.height(25.dp).align(Alignment.CenterVertically), thickness = 1.dp, color = Color(0xFFEEEEEE))
+                    SmallStat(Icons.Default.EmojiEvents, "${stats.competitions}", "Premios")
+                }
             }
         }
 
+        // --- CATEGORÍAS ---
         item {
-            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Text(
-                    text = "Categorías",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+            Text("Categorías", modifier = Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.Black)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CategoryChip(Icons.Default.EmojiEvents, "Torneos", Color(0xFFFFEDE7), Color(0xFFFF5722))
+                CategoryChip(Icons.Default.SportsEsports, "eSports", Color(0xFFF3E5F5), Color(0xFF7B1FA2))
+                CategoryChip(Icons.Default.MusicNote, "Social", Color(0xFFE8F5E9), Color(0xFF2E7D32))
+            }
+        }
+
+        // --- SECCIÓN: AHORA MISMO (CARRUSEL MÁS ANCHO) ---
+        item {
+            SectionHeader("Ahora mismo", "Ver más") { navController.navigate("explore") }
+        }
+
+        item {
+            if (activeEvents.isEmpty()) {
+                EmptyState()
+            } else {
                 Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    modifier = Modifier.horizontalScroll(rememberScrollState()).padding(start = 24.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CategoryChip(Icons.Default.EmojiEvents, "Competitivo", Color(0xFFFFF8E1), Color(0xFFFF8F00))
-                    CategoryChip(Icons.Default.SportsEsports, "eSports", Color(0xFFF3E5F5), Color(0xFF7B1FA2))
-                    CategoryChip(Icons.Default.MusicNote, "Social", Color(0xFFFCE4EC), Color(0xFFC2185B))
-                    CategoryChip(Icons.Default.People, "Reuniones", Color(0xFFE3F2FD), Color(0xFF1976D2))
+                    activeEvents.take(3).forEach { event ->
+                        FeaturedEventCard(
+                            event = event,
+                            modifier = Modifier.width(310.dp), // Más ancho para que no se vea tan estrecho
+                            onClick = { navController.navigate("event_detail/${event.id}") }
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(24.dp))
                 }
             }
         }
 
+        // --- SECCIÓN: PRÓXIMAMENTE (CON FECHAS) ---
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            SectionHeader("Próximamente", "") {}
+        }
+
+        items(upcomingEvents) { event ->
+            UpcomingEventItem(event) { navController.navigate("event_detail/${event.id}") }
+        }
+
+        item { Spacer(modifier = Modifier.height(20.dp)) }
+    }
+}
+
+@Composable
+fun SmallStat(icon: ImageVector, value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, tint = Color(0xFF6200EE), modifier = Modifier.size(20.dp))
+        Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = Color.Black)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+    }
+}
+
+@Composable
+fun SectionHeader(title: String, actionText: String, onAction: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 32.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.Black)
+        if (actionText.isNotEmpty()) {
+            TextButton(onClick = onAction) { Text(actionText, color = Color(0xFF6200EE)) }
+        }
+    }
+}
+
+@Composable
+fun UpcomingEventItem(event: Event, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Miniatura o Icono de fecha
+            Box(
+                modifier = Modifier.size(50.dp).background(Color(0xFFF3E5F5), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Eventos destacados",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-                TextButton(onClick = { navController.navigate("explore") }) {
-                    Text("Ver todos", color = Color(0xFF6200EE))
+                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = Color(0xFF6200EE))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(event.title, fontWeight = FontWeight.Bold, maxLines = 1, color = Color.Black)
+                Row{
+                    Text(event.location, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(", ${formatDate(event.date)}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
         }
+    }
+}
 
-        if (events.isEmpty()) {
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(40.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(color = Color(0xFF6200EE))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Cargando eventos...", color = Color.Gray)
-                }
-            }
-        } else {
-            val filteredEvents = events.filter { it.title.contains(searchQuery, ignoreCase = true) }
-
-            items(filteredEvents, key = { it.id }) { event ->
-                FeaturedEventCard(
-                    event = event,
-                    onClick = { navController.navigate("event_detail/${event.id}") }
-                )
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(80.dp)) }
+@Composable
+fun EmptyState() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Default.SearchOff, null, modifier = Modifier.size(48.dp), tint = Color.Gray)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("No se encontraron eventos", color = Color.Gray)
     }
 }

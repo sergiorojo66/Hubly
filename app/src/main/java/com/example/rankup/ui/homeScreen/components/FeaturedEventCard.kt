@@ -38,37 +38,35 @@ import java.util.Locale
 @Composable
 fun FeaturedEventCard(
     event: Event,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp)
+        modifier = modifier.padding(horizontal = 4.dp, vertical = 8.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically // Centra la imagen con el contenido
+            verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
                 model = event.imageUrl,
                 contentDescription = null,
                 modifier = Modifier
-                    .size(100.dp)
+                    .size(90.dp) // Un poco más pequeño para ganar espacio
                     .padding(8.dp)
-                    .clip(RoundedCornerShape(16.dp)),
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop
             )
 
             Column(
                 modifier = Modifier
-                    .padding(end = 12.dp, top = 12.dp, bottom = 12.dp)
+                    .padding(end = 12.dp, top = 8.dp, bottom = 8.dp)
                     .weight(1f)
             ) {
-                // --- FILA DE TÍTULO Y CATEGORÍA ---
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -76,73 +74,54 @@ fun FeaturedEventCard(
                 ) {
                     Text(
                         text = event.title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyLarge, // Cambiado de titleMedium
                         fontWeight = FontWeight.Bold,
                         color = Color.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        // fill = false permite que el texto ocupe solo lo necesario
-                        // y no empuje a la categoría fuera del Row
                         modifier = Modifier.weight(1f, fill = false)
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp)) // Espacio mínimo entre ambos
-
                     Surface(
                         color = Color(0xFFF1F3F4),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.align(Alignment.Top) // Mantiene la categoría arriba
+                        shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
                             text = event.category,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray,
-                            maxLines = 1 // Evita que la categoría se rompa en vertical
+                            color = Color.Gray
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // --- UBICACIÓN ---
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                    Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(12.dp), tint = Color.Gray)
                     Text(
                         text = " ${event.location}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-                // --- FECHA Y PARTICIPANTES ---
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = formatDate(event.date),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
                         color = Color(0xFF6200EE)
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Group,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.Gray
-                        )
-                        val participantesTexto = "${event.participantsIds.size}/${event.maxParticipants ?: "∞"}"
+                        Icon(Icons.Default.Group, null, modifier = Modifier.size(12.dp), tint = Color.Gray)
                         Text(
-                            text = " $participantesTexto",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = " ${event.participantsIds.size}/${event.maxParticipants ?: "∞"}",
+                            style = MaterialTheme.typography.labelSmall,
                             color = Color.Gray
                         )
                     }
