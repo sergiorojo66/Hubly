@@ -15,4 +15,5 @@ interface EventRepository {
     suspend fun deleteEvent(eventId: String): Result<Unit>
     suspend fun finishEvent(eventId: String): Result<Unit>
     fun getUserEventHistory(userId: String?): Flow<List<Event>>
+    suspend fun updateEvent(event: Event): Result<Unit>
 }
