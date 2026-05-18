@@ -4,6 +4,8 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -58,6 +60,7 @@ fun EventDetailScreen(
     val isFinished = event?.isFinished ?: false
     var showFinishDialog by remember { mutableStateOf(false) } // Nuevo estado
     var selectedUser by remember { mutableStateOf<User?>(null) }
+    var showParticipantsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(eventId) {
         viewModel.loadEvent(eventId)
@@ -96,6 +99,10 @@ fun EventDetailScreen(
                     onFinishEvent = { showFinishDialog = true },
                     // CAMBIO: Ahora pasamos la función para que el Header pueda setear al usuario
                     onOrganizerSelected = { user -> selectedUser = user },
+                    onShowParticipants = {
+                        viewModel.loadParticipantsProfiles(e.participantsIds)
+                        showParticipantsDialog = true
+                    },
                     loadUserProfile = { userId, onResult -> viewModel.loadUserProfile(userId, onResult) }
                 )
                 // --- 2. TABS (ESTÁTICAS) ---
@@ -305,6 +312,17 @@ fun EventDetailScreen(
                     shape = RoundedCornerShape(16.dp)
                 )
             }
+            if (showParticipantsDialog) {
+                ParticipantsListDialog(
+                    participants = viewModel.participantsProfiles.value,
+                    onUserClick = { user ->
+                        showParticipantsDialog = false // Cerramos la lista
+                        selectedUser = user            // ¡Y abrimos mágicamente su perfil público!
+                    },
+                    onDismiss = { showParticipantsDialog = false }
+                )
+            }
+
             selectedUser?.let { user ->
                 UserProfileDialog(
                     user = user,
@@ -327,7 +345,8 @@ fun EventHeader(
     onShareEvent: () -> Unit,
     onFinishEvent: () -> Unit,
     onOrganizerSelected: (User) -> Unit, // Nuevo parámetro
-    loadUserProfile: (String, (User) -> Unit) -> Unit
+    onShowParticipants: () -> Unit,
+    loadUserProfile: (String, (User) -> Unit) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -421,6 +440,15 @@ fun EventHeader(
                         }
 
                         if (isOrganizer) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+                            DropdownMenuItem(
+                                text = { Text("Ver participantes", color = Color.Black, fontWeight = FontWeight.Medium) },
+                                leadingIcon = { Icon(Icons.Default.Group, contentDescription = null, tint = Color(0xFF6200EE)) },
+                                onClick = {
+                                    expanded = false
+                                    onShowParticipants() // <--- Llamamos al callback
+                                }
+                            )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
                             DropdownMenuItem(
                                 text = {
@@ -631,5 +659,91 @@ fun shareEvent(context: android.content.Context, event: Event) {
 
     val shareIntent = Intent.createChooser(sendIntent, "Compartir evento")
     context.startActivity(shareIntent)
+}
+
+@Composable
+fun ParticipantsListDialog(
+    participants: List<User>,
+    onUserClick: (User) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar", color = Color(0xFF6200EE), fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(24.dp),
+        title = {
+            Text(
+                text = "Participantes Inscritos",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+        },
+        text = {
+            if (participants.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Cargando participantes...", color = Color.Gray)
+                }
+            } else {
+                // LazyColumn para permitir scroll eficiente
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(participants) { participant ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { onUserClick(participant) }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Avatar circular con iniciales (siguiendo tu modelo User)
+                            Surface(
+                                modifier = Modifier.size(44.dp),
+                                shape = CircleShape,
+                                color = Color(0xFF7C4DFF).copy(alpha = 0.15f)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = participant.initials.uppercase(),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color(0xFF7C4DFF),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column {
+                                Text(
+                                    text = participant.displayName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.Black
+                                )
+                                Text(
+                                    text = participant.username,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
 }
 
