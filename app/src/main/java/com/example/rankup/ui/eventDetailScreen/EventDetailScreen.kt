@@ -2,16 +2,63 @@ package com.example.rankup.ui.eventDetailScreen
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,7 +71,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.rankup.domain.model.Event
@@ -32,8 +78,6 @@ import com.example.rankup.domain.model.User
 import com.example.rankup.ui.eventDetailScreen.components.ChatSection
 import com.example.rankup.ui.eventDetailScreen.components.RankingSection
 import com.example.rankup.ui.profileScreen.UserProfileDialog
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -82,11 +126,7 @@ fun EventDetailScreen(
         val isFull = (e.participantsIds.size >= (e.maxParticipants ?: Int.MAX_VALUE))
 
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF8F9FA))) {
-            // USAMOS COLUMN SIN SCROLL GLOBAL PARA QUE EL CHAT FUNCIONE
             Column(modifier = Modifier.fillMaxSize()) {
-
-                // --- 1. CABECERA (ESTÁTICA) ---
-                // --- 1. CABECERA (ESTÁTICA) ---
                 EventHeader(
                     e = e,
                     navController = navController,
@@ -97,7 +137,6 @@ fun EventDetailScreen(
                     onDeleteEvent = { showDeleteDialog = true },
                     onShareEvent = { shareEvent(context, e) },
                     onFinishEvent = { showFinishDialog = true },
-                    // CAMBIO: Ahora pasamos la función para que el Header pueda setear al usuario
                     onOrganizerSelected = { user -> selectedUser = user },
                     onShowParticipants = {
                         viewModel.loadParticipantsProfiles(e.participantsIds)
@@ -105,7 +144,6 @@ fun EventDetailScreen(
                     },
                     loadUserProfile = { userId, onResult -> viewModel.loadUserProfile(userId, onResult) }
                 )
-                // --- 2. TABS (ESTÁTICAS) ---
                 ScrollableTabRow(
                     selectedTabIndex = getTabIndex(selectedTab, e.modules),
                     containerColor = Color.White,
@@ -124,11 +162,9 @@ fun EventDetailScreen(
                     }
                 }
 
-                // --- 3. CONTENIDO DINÁMICO (USA WEIGHT PARA RELLENAR ESPACIO) ---
                 Box(modifier = Modifier.weight(1f)) {
                     when (selectedTab) {
                         "info" -> {
-                            // SOLO LA INFO TIENE SCROLL PROPIO
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -136,7 +172,7 @@ fun EventDetailScreen(
                                     .padding(24.dp)
                             ) {
                                 InfoSection(e)
-                                Spacer(modifier = Modifier.height(100.dp)) // Espacio para el botón flotante
+                                Spacer(modifier = Modifier.height(100.dp))
                             }
                         }
                         "ranking" -> {
@@ -146,7 +182,6 @@ fun EventDetailScreen(
                             }
                         }
                         "chat" -> {
-                            // EL CHAT NO LLEVA PADDING EXTRA PARA AJUSTARSE A LOS BORDES
                             if (isJoined) ChatSection(viewModel)
                             else Box(modifier = Modifier.padding(24.dp)) { LockedModulePlaceholder("Chat") }
                         }
@@ -154,7 +189,7 @@ fun EventDetailScreen(
                 }
             }
 
-            if (selectedTab == "info" && !isJoined) { // <--- Condición actualizada
+            if (selectedTab == "info" && !isJoined) {
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -168,7 +203,7 @@ fun EventDetailScreen(
                         onClick = {
                             if (!isFull) {
                                 if (event?.isPrivate == true) {
-                                    showPasswordDialog = true // Abrir diálogo si es privado
+                                    showPasswordDialog = true
                                 } else {
                                     event?.let { viewModel.joinEvent(it.id) }
                                 }
@@ -224,7 +259,6 @@ fun EventDetailScreen(
                 )
             }
 
-            // --- DIÁLOGO DE ANULAR INSCRIPCIÓN ---
             if (showLeaveDialog) {
                 AlertDialog(
                     onDismissRequest = { showLeaveDialog = false },
@@ -266,7 +300,7 @@ fun EventDetailScreen(
                     },
                     confirmButton = {
                         TextButton(onClick = {
-                            if (passwordInput == event?.password) { // Validación
+                            if (passwordInput == event?.password) {
                                 showPasswordDialog = false
                                 event?.let { viewModel.joinEvent(it.id) }
                             } else {
@@ -316,8 +350,8 @@ fun EventDetailScreen(
                 ParticipantsListDialog(
                     participants = viewModel.participantsProfiles.value,
                     onUserClick = { user ->
-                        showParticipantsDialog = false // Cerramos la lista
-                        selectedUser = user            // ¡Y abrimos mágicamente su perfil público!
+                        showParticipantsDialog = false
+                        selectedUser = user
                     },
                     onDismiss = { showParticipantsDialog = false }
                 )
@@ -344,7 +378,7 @@ fun EventHeader(
     onDeleteEvent: () -> Unit,
     onShareEvent: () -> Unit,
     onFinishEvent: () -> Unit,
-    onOrganizerSelected: (User) -> Unit, // Nuevo parámetro
+    onOrganizerSelected: (User) -> Unit,
     onShowParticipants: () -> Unit,
     loadUserProfile: (String, (User) -> Unit) -> Unit,
 ) {
@@ -358,7 +392,6 @@ fun EventHeader(
             contentScale = ContentScale.Crop
         )
 
-        // Degradado más oscuro en la parte superior para que los botones blancos resalten
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
@@ -373,15 +406,12 @@ fun EventHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Botón Atrás
             IconButton(
                 onClick = { navController.popBackStack() },
                 modifier = Modifier.background(Color.White.copy(alpha = 0.2f), CircleShape)
             ) {
                 Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
             }
-
-            // ... dentro de EventHeader
 
             Box {
                 IconButton(
@@ -391,7 +421,6 @@ fun EventHeader(
                     Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.White)
                 }
 
-                // Usamos MaterialTheme envolviendo el menú para quitar esas esquinas feas
                 MaterialTheme(
                     shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(12.dp))
                 ) {
@@ -399,7 +428,6 @@ fun EventHeader(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
                         modifier = Modifier.background(Color.White)
-                        // Al definir el background aquí dentro del shape, se eliminan los bordes negros
                     ) {
                         DropdownMenuItem(
                             text = {
@@ -413,7 +441,7 @@ fun EventHeader(
                                 Icon(
                                     Icons.Default.Share,
                                     contentDescription = null,
-                                    tint = Color(0xFF6200EE) // Mantenemos el lila para darle vida
+                                    tint = Color(0xFF6200EE)
                                 )
                             },
                             onClick = {
@@ -446,7 +474,7 @@ fun EventHeader(
                                 leadingIcon = { Icon(Icons.Default.Group, contentDescription = null, tint = Color(0xFF6200EE)) },
                                 onClick = {
                                     expanded = false
-                                    onShowParticipants() // <--- Llamamos al callback
+                                    onShowParticipants()
                                 }
                             )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
@@ -471,14 +499,13 @@ fun EventHeader(
                                 }
                             )
                         }
-                        // Busca esta parte dentro de EventHeader en tu EventDetailScreen.kt
                         if (isOrganizer && !e.isFinished) {
                             DropdownMenuItem(
                                 text = { Text("Finalizar evento", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold) },
                                 leadingIcon = { Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50)) },
                                 onClick = {
                                     expanded = false
-                                    onFinishEvent() // <--- Llamamos al callback que pasamos por parámetro
+                                    onFinishEvent()
                                 }
                             )
                         }
@@ -486,16 +513,12 @@ fun EventHeader(
                 }
             }
         }
-
-        // Info del evento en la parte inferior (igual que antes)
-        // Dentro de EventHeader, en la parte inferior donde está la info
         Column(modifier = Modifier.align(Alignment.BottomStart).padding(24.dp)) {
             Badge(containerColor = Color(0xFF7C4DFF), contentColor = Color.White) {
                 Text(e.category, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
             }
             Text(e.title, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
 
-            // MODIFICACIÓN AQUÍ:
             Text(
                 text = "Organizado por $organizerName",
                 color = Color.White.copy(alpha = 0.9f),
@@ -504,7 +527,7 @@ fun EventHeader(
                     .clip(RoundedCornerShape(4.dp))
                     .clickable {
                         loadUserProfile(e.organizer) { user ->
-                            onOrganizerSelected(user) // Usamos el callback aquí
+                            onOrganizerSelected(user)
                         }
                     }
                     .padding(vertical = 2.dp)
@@ -644,7 +667,6 @@ fun LockedModulePlaceholder(moduleName: String) {
 }
 
 fun shareEvent(context: android.content.Context, event: Event) {
-    // Creamos la URL con el ID del evento
     val eventLink = "https://rankup.com/event/${event.id}"
 
     val sendIntent: Intent = Intent().apply {
@@ -694,7 +716,6 @@ fun ParticipantsListDialog(
                     Text("Cargando participantes...", color = Color.Gray)
                 }
             } else {
-                // LazyColumn para permitir scroll eficiente
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -708,7 +729,6 @@ fun ParticipantsListDialog(
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Avatar circular con iniciales (siguiendo tu modelo User)
                             Surface(
                                 modifier = Modifier.size(44.dp),
                                 shape = CircleShape,

@@ -174,4 +174,28 @@ class EventRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override fun getUserEventHistory(userId: String?): Flow<List<Event>> = callbackFlow {
+        if (userId == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+
+        val subscription = eventCollection
+            .whereArrayContains("participantsIds", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("Firestore", "Error cargando historial: ${error.message}")
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val events = snapshot.toObjects(Event::class.java)
+                    trySend(events)
+                }
+            }
+
+        awaitClose { subscription.remove() }
+    }
 }
