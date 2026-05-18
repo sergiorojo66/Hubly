@@ -9,19 +9,13 @@ data class Event(
     val category: String = "",
     val location: String = "",
     val date: Long = 0L,
-
     @get:PropertyName("private")
     @PropertyName("private")
     val isPrivate: Boolean = false,
-
     val password: String = "",
-
-    // --- AÑADE ESTAS ANOTACIONES AQUÍ ---
     @get:PropertyName("isFinished")
     @PropertyName("isFinished")
     val isFinished: Boolean = false,
-    // ------------------------------------
-
     val imageUrl: String = "",
     val organizer: String = "",
     val participants: List<String> = emptyList(),

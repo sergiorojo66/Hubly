@@ -198,4 +198,16 @@ class EventRepositoryImpl @Inject constructor(
 
         awaitClose { subscription.remove() }
     }
+
+    override suspend fun updateEvent(event: Event): Result<Unit> {
+        return try {
+            firestore.collection("events")
+                .document(event.id)
+                .set(event)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

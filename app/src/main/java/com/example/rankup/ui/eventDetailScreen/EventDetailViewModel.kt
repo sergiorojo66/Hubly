@@ -1,5 +1,6 @@
 package com.example.rankup.ui.eventDetailScreen
 
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rankup.domain.model.ChatMessage
@@ -18,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import kotlin.text.get
@@ -53,6 +56,30 @@ class EventDetailViewModel @Inject constructor(
 
     private val _participantsProfiles = MutableStateFlow<List<User>>(emptyList())
     val participantsProfiles = _participantsProfiles.asStateFlow()
+
+    var editTitle by mutableStateOf("")
+    var editDescription by mutableStateOf("")
+    var editCategory by mutableStateOf("")
+    var editLocation by mutableStateOf("")
+    var editMaxParticipants by mutableStateOf("")
+    var editDate by mutableStateOf(0L)
+    var editIsPrivate by mutableStateOf(false)
+    var editPassword by mutableStateOf("")
+    var editModules by mutableStateOf<List<String>>(listOf("info"))
+    var isCategoryMenuExpanded by mutableStateOf(false)
+    var isSavingUpdate by mutableStateOf(false)
+
+    fun prepareEditForm(currentEvent: Event) {
+        editTitle = currentEvent.title
+        editDescription = currentEvent.description
+        editCategory = currentEvent.category
+        editLocation = currentEvent.location
+        editMaxParticipants = currentEvent.maxParticipants?.toString() ?: ""
+        editDate = currentEvent.date
+        editIsPrivate = currentEvent.isPrivate
+        editPassword = currentEvent.password
+        editModules = currentEvent.modules
+    }
 
     private fun loadRankings(eventId: String) {
         FirebaseFirestore.getInstance()
@@ -256,6 +283,88 @@ class EventDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 _error.value = "Error al cargar la lista de participantes"
             }
+        }
+    }
+
+    fun validateForm(currentEvent: Event, onError: (String) -> Unit): Boolean {
+        if (editTitle.isBlank() || editLocation.isBlank()) {
+            onError("El título y la ubicación son obligatorios.")
+            return false
+        }
+
+        // 1. Validar que la fecha no sea anterior a la actual (hoy a las 00:00 para evitar desajustes de horas)
+        val todayStart = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        if (editDate < todayStart) {
+            onError("La fecha seleccionada no puede ser anterior a la actual.")
+            return false
+        }
+
+        // 2. Validar participantes inscritos vs nuevo límite
+        val currentParticipantsCount = currentEvent.participantsIds.size
+        val newMax = editMaxParticipants.toIntOrNull()
+
+        if (newMax != null && newMax < currentParticipantsCount) {
+            onError("El límite no puede ser menor que los inscritos actuales ($currentParticipantsCount).")
+            return false
+        }
+
+        if (editIsPrivate && editPassword.length < 4) {
+            onError("La contraseña debe tener al menos 4 caracteres.")
+            return false
+        }
+
+        return true
+    }
+
+    fun saveUpdatedEvent(onSuccess: () -> Unit) {
+        val currentEvent = _event.value ?: return
+        isSavingUpdate = true
+
+        viewModelScope.launch {
+            // Mapeamos la URL de la imagen automáticamente al cambiar categorías siguiendo tu lógica previa
+            val newImageUrl = when (editCategory) {
+                "SPORTS" -> "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=500"
+                "SOCIAL" -> "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=500"
+                "ESPORTS" -> "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500"
+                "EDUCATION" -> "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1000"
+                else -> "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=500"
+            }
+
+            val updatedEvent = currentEvent.copy(
+                title = editTitle,
+                description = editDescription,
+                category = editCategory,
+                location = editLocation,
+                maxParticipants = editMaxParticipants.toIntOrNull(),
+                date = editDate,
+                isPrivate = editIsPrivate,
+                password = if (editIsPrivate) editPassword else "",
+                modules = editModules,
+                imageUrl = newImageUrl
+            )
+
+            repository.updateEvent(updatedEvent).onSuccess {
+                isSavingUpdate = false
+                _error.value = "Evento actualizado correctamente"
+                onSuccess()
+            }.onFailure {
+                isSavingUpdate = false
+                _error.value = "Error al actualizar el evento en la base de datos."
+            }
+        }
+    }
+
+    fun toggleEditModule(module: String) {
+        editModules = if (editModules.contains(module)) {
+            editModules.filter { it != module }
+        } else {
+            editModules + module
         }
     }
 }

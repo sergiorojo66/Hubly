@@ -14,6 +14,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.util.Calendar
 import javax.inject.Inject
 
 @HiltViewModel
@@ -24,17 +25,36 @@ class CreateEventViewModel @Inject constructor(
     var state by mutableStateOf(CreateEventState())
         private set
 
+    // Devuelve los milisegundos de hoy a las 00:00:00.000 para que cualquier hora de hoy sea válida
+    private val todayStartMillis: Long
+        get() = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+    // Añadida la comprobación: state.date debe ser mayor o igual al inicio del día de hoy
     val isFormValid: Boolean
         get() = state.title.isNotBlank() &&
                 state.location.isNotBlank() &&
                 (!state.isPrivate || state.password.length >= 4) &&
-                state.date > 0L
+                state.date >= todayStartMillis
 
     fun onTitleChange(newValue: String) { state = state.copy(title = newValue) }
     fun onDescriptionChange(newValue: String) { state = state.copy(description = newValue) }
     fun onCategoryChange(newValue: String) { state = state.copy(category = EventCategory.valueOf(newValue)) }
     fun onLocationChange(newValue: String) { state = state.copy(location = newValue) }
-    fun onDateChange(newValue: Long) { state = state.copy(date = newValue) }
+
+    // Al cambiar la fecha, limpiamos el error si la fecha pasa a ser correcta, o lanzamos aviso si es pasada
+    fun onDateChange(newValue: Long) {
+        val isPastDate = newValue < todayStartMillis
+        state = state.copy(
+            date = newValue,
+            error = if (isPastDate) "La fecha no puede ser anterior a la actual" else null
+        )
+    }
+
     fun onMaxParticipantsChange(newValue: String) {
         val digitsOnly = newValue.filter { it.isDigit() }
         val sanitizedValue = when {
@@ -60,63 +80,74 @@ class CreateEventViewModel @Inject constructor(
         )
     }
     fun createEvent(onSuccess: () -> Unit) {
+        // Doble verificación por seguridad antes de lanzar la corrutina
+        if (!isFormValid) {
+            state = state.copy(error = "Por favor, revisa los datos introducidos.")
+            return
+        }
+
         viewModelScope.launch {
-            state = state.copy(isLoading = true)
+            state = state.copy(isLoading = true, error = null)
             val currentUserId = auth.currentUser?.uid ?: return@launch
 
-            // 1. Obtener el nombre real del creador antes de crear el evento
-            val userDoc = FirebaseFirestore.getInstance().collection("users").document(currentUserId).get().await()
-            val realName = userDoc.getString("displayName") ?: "Organizador"
+            try {
+                // 1. Obtener el nombre real del creador antes de crear el evento
+                val userDoc = FirebaseFirestore.getInstance().collection("users").document(currentUserId).get().await()
+                val realName = userDoc.getString("displayName") ?: "Organizador"
 
-            val categoryImageUrl = when (state.category) {
-                EventCategory.SPORTS -> "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=500"
-                EventCategory.SOCIAL -> "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=500"
-                EventCategory.ESPORTS -> "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500"
-                EventCategory.EDUCATION -> "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1000"
-                EventCategory.OTHER -> "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=500"
-            }
+                val categoryImageUrl = when (state.category) {
+                    EventCategory.SPORTS -> "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=500"
+                    EventCategory.SOCIAL -> "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=500"
+                    EventCategory.ESPORTS -> "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500"
+                    EventCategory.EDUCATION -> "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1000"
+                    EventCategory.OTHER -> "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=500"
+                }
 
-            val newEvent = Event(
-                title = state.title,
-                description = state.description,
-                category = state.category.name,
-                location = state.location,
-                date = state.date,
-                isPrivate = state.isPrivate,
-                password = if (state.isPrivate) state.password else "", // <--- AÑADE ESTA LÍNEA
-                imageUrl = categoryImageUrl,
-                organizer = currentUserId,
-                maxParticipants = state.maxParticipants.toIntOrNull(),
-                modules = state.selectedModules.toList(),
-                participantsIds = listOf(currentUserId)
-            )
-
-            // 2. Crear el evento y recibir el ID generado
-            eventRepository.createEvent(newEvent).onSuccess { generatedId ->
-                val creatorRanking = RankingUser(
-                    id = currentUserId,
-                    userName = realName, // Ahora usa su nombre real
-                    points = 0,
-                    level = 1
+                val newEvent = Event(
+                    title = state.title,
+                    description = state.description,
+                    category = state.category.name,
+                    location = state.location,
+                    date = state.date,
+                    isPrivate = state.isPrivate,
+                    password = if (state.isPrivate) state.password else "",
+                    imageUrl = categoryImageUrl,
+                    organizer = currentUserId,
+                    maxParticipants = state.maxParticipants.toIntOrNull(),
+                    modules = state.selectedModules.toList(),
+                    participantsIds = listOf(currentUserId)
                 )
 
-                // 3. Crear el ranking usando el ID generado (generatedId)
-                FirebaseFirestore.getInstance()
-                    .collection("events")
-                    .document(generatedId) // <--- IMPORTANTE: Usar el ID que devuelve el repo
-                    .collection("rankings")
-                    .document(currentUserId)
-                    .set(creatorRanking)
-                    .await() // Esperamos a que se cree para evitar race conditions
+                // 2. Crear el evento y recibir el ID generado
+                eventRepository.createEvent(newEvent).onSuccess { generatedId ->
+                    val creatorRanking = RankingUser(
+                        id = currentUserId,
+                        userName = realName,
+                        points = 0,
+                        level = 1
+                    )
 
-                onSuccess()
-            }.onFailure {
-                state = state.copy(error = "Error al guardar el evento", isLoading = false)
+                    // 3. Crear el ranking usando el ID generado (generatedId)
+                    FirebaseFirestore.getInstance()
+                        .collection("events")
+                        .document(generatedId)
+                        .collection("rankings")
+                        .document(currentUserId)
+                        .set(creatorRanking)
+                        .await()
+
+                    onSuccess()
+                }.onFailure {
+                    state = state.copy(error = "Error al guardar el evento", isLoading = false)
+                }
+            } catch (e: Exception) {
+                state = state.copy(error = "Error de conexión con la base de datos", isLoading = false)
             }
         }
     }
+
     fun toggleModule(moduleId: String) {
-        if (moduleId == "info") return // No se puede quitar "info"
+        if (moduleId == "info") return
 
         val currentModules = state.selectedModules.toMutableSet()
         if (currentModules.contains(moduleId)) {
@@ -130,7 +161,6 @@ class CreateEventViewModel @Inject constructor(
     fun onPasswordChange(newValue: String) {
         state = state.copy(password = newValue)
     }
-
 }
 
 data class CreateEventState(

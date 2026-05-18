@@ -22,12 +22,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.LocationOn
@@ -41,15 +43,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -69,12 +75,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.model.User
+import com.example.rankup.domain.model.enums.EventCategory
+import com.example.rankup.ui.authScreen.components.HublyTextField
+import com.example.rankup.ui.createEventScreen.components.CategorySelector
+import com.example.rankup.ui.createEventScreen.components.CreateEventCard
+import com.example.rankup.ui.createEventScreen.components.DatePickerField
+import com.example.rankup.ui.createEventScreen.components.ModuleChip
 import com.example.rankup.ui.eventDetailScreen.components.ChatSection
 import com.example.rankup.ui.eventDetailScreen.components.RankingSection
 import com.example.rankup.ui.profileScreen.UserProfileDialog
@@ -105,6 +119,7 @@ fun EventDetailScreen(
     var showFinishDialog by remember { mutableStateOf(false) } // Nuevo estado
     var selectedUser by remember { mutableStateOf<User?>(null) }
     var showParticipantsDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(eventId) {
         viewModel.loadEvent(eventId)
@@ -141,6 +156,10 @@ fun EventDetailScreen(
                     onShowParticipants = {
                         viewModel.loadParticipantsProfiles(e.participantsIds)
                         showParticipantsDialog = true
+                    },
+                    onEditEvent = {
+                        viewModel.prepareEditForm(e) // Rellena el formulario con los datos actuales del evento
+                        showEditDialog = true
                     },
                     loadUserProfile = { userId, onResult -> viewModel.loadUserProfile(userId, onResult) }
                 )
@@ -357,6 +376,14 @@ fun EventDetailScreen(
                 )
             }
 
+            if (showEditDialog) {
+                EditEventDialog(
+                    viewModel = viewModel,
+                    currentEvent = e,
+                    onDismiss = { showEditDialog = false }
+                )
+            }
+
             selectedUser?.let { user ->
                 UserProfileDialog(
                     user = user,
@@ -380,6 +407,7 @@ fun EventHeader(
     onFinishEvent: () -> Unit,
     onOrganizerSelected: (User) -> Unit,
     onShowParticipants: () -> Unit,
+    onEditEvent: () -> Unit,
     loadUserProfile: (String, (User) -> Unit) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -451,6 +479,7 @@ fun EventHeader(
                         )
 
                         if (isJoined && !isOrganizer) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
                             DropdownMenuItem(
                                 text = { Text("Anular inscripción", color = Color(0xFFE53935)) },
                                 leadingIcon = {
@@ -468,6 +497,15 @@ fun EventHeader(
                         }
 
                         if (isOrganizer) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+                            DropdownMenuItem(
+                                text = { Text("Modificar evento", color = Color.Black, fontWeight = FontWeight.Medium) },
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFF6200EE)) },
+                                onClick = {
+                                    expanded = false
+                                    onEditEvent()
+                                }
+                            )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
                             DropdownMenuItem(
                                 text = { Text("Ver participantes", color = Color.Black, fontWeight = FontWeight.Medium) },
@@ -500,6 +538,7 @@ fun EventHeader(
                             )
                         }
                         if (isOrganizer && !e.isFinished) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
                             DropdownMenuItem(
                                 text = { Text("Finalizar evento", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold) },
                                 leadingIcon = { Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50)) },
@@ -759,6 +798,200 @@ fun ParticipantsListDialog(
                                     color = Color.Gray
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun EditEventDialog(
+    viewModel: EventDetailViewModel,
+    currentEvent: Event,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val scrollState = rememberScrollState()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        containerColor = Color(0xFFF8F9FA), // Fondo de tu app
+        shape = RoundedCornerShape(24.dp),
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Modificar Evento",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                // 1. INFORMACIÓN BÁSICA
+                CreateEventCard {
+                    Text("Información básica", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp), color = Color.Black)
+
+                    HublyTextField(
+                        label = "Título del evento *",
+                        value = viewModel.editTitle,
+                        placeholder = "Ej: Torneo de Pádel",
+                        onValueChange = { viewModel.editTitle = it },
+                        singleLine = true
+                    )
+
+                    HublyTextField(
+                        label = "Descripción",
+                        value = viewModel.editDescription,
+                        placeholder = "Cuéntanos más...",
+                        singleLine = false,
+                        onValueChange = { viewModel.editDescription = it }
+                    )
+
+                    // Adaptador seguro para el selector Enum de tu CreateScreen anterior
+                    val currentEnumCategory = try {
+                        EventCategory.valueOf(viewModel.editCategory)
+                    } catch (e: Exception) {
+                        EventCategory.SPORTS
+                    }
+
+                    CategorySelector(
+                        selectedCategory = currentEnumCategory,
+                        expanded = viewModel.isCategoryMenuExpanded,
+                        onExpandedChange = { viewModel.isCategoryMenuExpanded = it },
+                        onCategorySelected = { viewModel.editCategory = it.name }
+                    )
+
+                    HublyTextField(
+                        label = "Ubicación *",
+                        value = viewModel.editLocation,
+                        placeholder = "Ciudad o lugar",
+                        onValueChange = { viewModel.editLocation = it }
+                    )
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            HublyTextField(
+                                label = "Máx. part. (Inscritos: ${currentEvent.participantsIds.size})",
+                                value = viewModel.editMaxParticipants,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                placeholder = "Sin limite",
+                                onValueChange = { viewModel.editMaxParticipants = it }
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            DatePickerField(
+                                selectedDate = viewModel.editDate,
+                                onDateSelected = { viewModel.editDate = it }
+                            )
+                        }
+                    }
+                }
+
+                // 2. PRIVACIDAD Y SEGURIDAD
+                CreateEventCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(
+                                imageVector = if (viewModel.editIsPrivate) Icons.Default.Lock else Icons.Default.Public,
+                                contentDescription = null,
+                                tint = if (viewModel.editIsPrivate) Color(0xFFFF9800) else Color(0xFF4CAF50),
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Column(modifier = Modifier.padding(start = 12.dp)) {
+                                Text(
+                                    text = if (viewModel.editIsPrivate) "Evento Privado" else "Evento Público",
+                                    color = if (viewModel.editIsPrivate) Color(0xFFFF9800) else Color(0xFF4CAF50),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = viewModel.editIsPrivate,
+                            onCheckedChange = { viewModel.editIsPrivate = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = Color(0xFF6D31FF)
+                            )
+                        )
+                    }
+
+                    if (viewModel.editIsPrivate) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        HublyTextField(
+                            label = "Contraseña de acceso *",
+                            value = viewModel.editPassword,
+                            placeholder = "Mínimo 4 caracteres",
+                            singleLine = true,
+                            onValueChange = { viewModel.editPassword = it },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        )
+                    }
+                }
+
+                // 3. MÓDULOS OPCIONALES
+                CreateEventCard {
+                    Text("Módulos opcionales", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp), color = Color.Black)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ModuleChip(label = "Info", isSelected = true, enabled = false, onClick = {})
+                        ModuleChip(
+                            label = "Chat",
+                            isSelected = viewModel.editModules.contains("chat"),
+                            onClick = { viewModel.toggleEditModule("chat") }
+                        )
+                        ModuleChip(
+                            label = "Ranking",
+                            isSelected = viewModel.editModules.contains("ranking"),
+                            onClick = { viewModel.toggleEditModule("ranking") }
+                        )
+                    }
+                }
+
+                // 4. ACCIONES DEL DIÁLOGO
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(50.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cancelar", color = Color.Gray)
+                    }
+
+                    Button(
+                        onClick = {
+                            val isValid = viewModel.validateForm(currentEvent) { msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            }
+                            if (isValid) {
+                                viewModel.saveUpdatedEvent { onDismiss() }
+                            }
+                        },
+                        modifier = Modifier.weight(1f).height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6D31FF)),
+                        enabled = !viewModel.isSavingUpdate
+                    ) {
+                        if (viewModel.isSavingUpdate) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                        } else {
+                            Text("Guardar", fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
