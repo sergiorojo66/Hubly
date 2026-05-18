@@ -51,6 +51,9 @@ class EventDetailViewModel @Inject constructor(
         event?.participantsIds?.contains(currentUserId) ?: false
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    private val _participantsProfiles = MutableStateFlow<List<User>>(emptyList())
+    val participantsProfiles = _participantsProfiles.asStateFlow()
+
     private fun loadRankings(eventId: String) {
         FirebaseFirestore.getInstance()
             .collection("events")
@@ -236,6 +239,22 @@ class EventDetailViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _error.value = "No se pudo cargar el perfil"
+            }
+        }
+    }
+
+    fun loadParticipantsProfiles(participantsIds: List<String>) {
+        viewModelScope.launch {
+            try {
+                val usersList = mutableListOf<User>()
+                // Hacemos las peticiones en paralelo o secuenciales cortas
+                for (id in participantsIds) {
+                    val doc = firestore.collection("users").document(id).get().await()
+                    doc.toObject(User::class.java)?.let { usersList.add(it) }
+                }
+                _participantsProfiles.value = usersList
+            } catch (e: Exception) {
+                _error.value = "Error al cargar la lista de participantes"
             }
         }
     }
