@@ -16,6 +16,7 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -152,44 +153,53 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun ensureUserProfileExists() {
+    // 1. Asegúrate de importar Firebase Messaging arriba del archivo si no lo tienes:
+// import com.google.firebase.messaging.FirebaseMessaging
+
+    suspend fun ensureUserProfileExists() {
         val currentUser = firebaseAuth.currentUser ?: return
         val uid = currentUser.uid
         val email = currentUser.email ?: ""
 
-        // Generamos un username único inicial basado en el email (ej: @mrossi)
         val sanitizedUsername = "@" + email.substringBefore("@").lowercase().replace(".", "_")
 
-        // PRIORIDAD:
-        // 1. Nombre de Google/Firebase
-        // 2. Nombre escrito en el campo de texto (si lo tienes en el State)
-        // 3. Un USER_ID genérico
         val defaultName = currentUser.displayName
             ?: if (state.name.isNotBlank()) state.name
             else "Usuario ${uid.take(5)}"
 
-        viewModelScope.launch {
-            try {
-                val userRef = firestore.collection("users").document(uid)
-                val doc = userRef.get().await()
-
-                // Solo creamos el documento si NO existe.
-                // Si ya existe, no tocamos nada para no sobreescribir los cambios del usuario.
-                if (!doc.exists()) {
-                    val newUser = User(
-                        id = uid,
-                        username = sanitizedUsername,
-                        displayName = defaultName,
-                        email = email,
-                        initials = defaultName.take(1).uppercase(),
-                        bio = "¡Hola! Soy nuevo en RankUp.", // O Hubly, según tu TFG
-                        rating = 5.0
-                    )
-                    userRef.set(newUser).await()
-                }
+        try {
+            // Recuperamos el token de FCM de manera asíncrona pero secuencial
+            val fcmToken = try {
+                FirebaseMessaging.getInstance().token.await()
             } catch (e: Exception) {
-                println("Error al crear perfil: ${e.message}")
+                println("Error al obtener FCM Token: ${e.message}")
+                null
             }
+
+            val userRef = firestore.collection("users").document(uid)
+            val doc = userRef.get().await()
+
+            if (!doc.exists()) {
+                // Usamos la Opción A pasándole directamente el fcmToken al constructor de tu User
+                val newUser = User(
+                    id = uid,
+                    username = sanitizedUsername,
+                    displayName = defaultName,
+                    email = email,
+                    initials = defaultName.take(1).uppercase(),
+                    bio = "¡Hola! Soy nuevo en Hubly.",
+                    rating = 5.0,
+                    fcmToken = fcmToken // 👈 Mapeado impecable
+                )
+                userRef.set(newUser).await()
+            } else {
+                // Si el usuario ya existe (Sergio logueándose), actualizamos el token por si acaso
+                if (fcmToken != null) {
+                    userRef.update("fcmToken", fcmToken).await()
+                }
+            }
+        } catch (e: Exception) {
+            println("Error al crear perfil o registrar token: ${e.message}")
         }
     }
 }
