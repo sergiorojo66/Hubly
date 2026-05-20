@@ -1,5 +1,6 @@
 package com.example.rankup.ui.eventDetailScreen
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import kotlin.text.get
@@ -29,7 +31,8 @@ import kotlin.text.get
 class EventDetailViewModel @Inject constructor(
     private val repository: EventRepository,
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    @ApplicationContext private val context: Context // <-- Inyectamos el contexto de forma segura
 ) : ViewModel() {
 
     private val _event = MutableStateFlow<Event?>(null)
@@ -151,24 +154,53 @@ class EventDetailViewModel @Inject constructor(
     }
 
     fun sendMessage(text: String) {
-        val eventId = _event.value?.id ?: return
+        val eventCurrent = _event.value ?: return
+        val eventId = eventCurrent.id
         val userUid = auth.currentUser?.uid ?: return
 
         viewModelScope.launch {
             try {
                 val userDoc = firestore.collection("users").document(userUid).get().await()
                 val hublyUser = userDoc.toObject(User::class.java)
+                val senderName = hublyUser?.displayName ?: "Usuario"
 
                 val newMessage = ChatMessage(
                     senderId = userUid,
-                    senderName = hublyUser?.displayName ?: "Usuario",
+                    senderName = senderName,
                     message = text,
-                    // Ajuste aquí para evitar el Type Mismatch
                     timestamp = java.util.Date()
                 )
+
+                // 1. Enviamos el mensaje al chat
                 repository.sendMessage(eventId, newMessage)
+
+                // 2. Lógica de Notificaciones: Traer tokens de los participantes (menos el emisor)
+                val idsANotificar = eventCurrent.participantsIds.filter { it != userUid }
+
+                if (idsANotificar.isNotEmpty()) {
+                    val tokensList = mutableListOf<String>()
+
+                    // Consultamos los tokens en Firestore
+                    for (id in idsANotificar) {
+                        val doc = firestore.collection("users").document(id).get().await()
+                        val token = doc.getString("fcmToken")
+                        if (!token.isNullOrBlank()) {
+                            tokensList.add(token)
+                        }
+                    }
+
+                    // Si hay dispositivos válidos, enviamos el push
+                    if (tokensList.isNotEmpty()) {
+                        com.example.rankup.data.network.FcmSender.enviarNotificacionPush(
+                            context = context,
+                            tokensParticipantes = tokensList,
+                            titulo = "Chat: ${eventCurrent.title}",
+                            mensaje = "$senderName: $text"
+                        )
+                    }
+                }
             } catch (e: Exception) {
-                _error.value = "Error al enviar mensaje"
+                _error.value = "Error al enviar mensaje o notificación"
             }
         }
     }
@@ -246,9 +278,44 @@ class EventDetailViewModel @Inject constructor(
     }
 
     fun finishEvent(eventId: String) {
+        val eventCurrent = _event.value ?: return
+        val userUid = auth.currentUser?.uid ?: return
+
         viewModelScope.launch {
             repository.finishEvent(eventId).onSuccess {
                 _error.value = "Evento finalizado correctamente"
+
+                // Lógica de Notificaciones: Avisar a los participantes que el evento ha terminado
+                viewModelScope.launch {
+                    try {
+                        // Filtramos para no mandarnos un push a nosotros mismos como organizadores
+                        val idsANotificar = eventCurrent.participantsIds.filter { it != userUid }
+
+                        if (idsANotificar.isNotEmpty()) {
+                            val tokensList = mutableListOf<String>()
+
+                            for (id in idsANotificar) {
+                                val doc = firestore.collection("users").document(id).get().await()
+                                val token = doc.getString("fcmToken")
+                                if (!token.isNullOrBlank()) {
+                                    tokensList.add(token)
+                                }
+                            }
+
+                            if (tokensList.isNotEmpty()) {
+                                com.example.rankup.data.network.FcmSender.enviarNotificacionPush(
+                                    context = context,
+                                    tokensParticipantes = tokensList,
+                                    titulo = "🏁 ¡Evento Finalizado!",
+                                    mensaje = "El evento '${eventCurrent.title}' ha terminado. ¡Entra para ver los resultados y el ranking final!"
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("NotificationFinish", "Error al enviar push de finalización", e)
+                    }
+                }
+
             }.onFailure {
                 _error.value = "Error al finalizar el evento"
             }
@@ -324,10 +391,11 @@ class EventDetailViewModel @Inject constructor(
 
     fun saveUpdatedEvent(onSuccess: () -> Unit) {
         val currentEvent = _event.value ?: return
+        val userUid = auth.currentUser?.uid ?: return
         isSavingUpdate = true
 
         viewModelScope.launch {
-            // Mapeamos la URL de la imagen automáticamente al cambiar categorías siguiendo tu lógica previa
+            // Mapeamos la URL de la imagen automáticamente al cambiar categorías
             val newImageUrl = when (editCategory) {
                 "SPORTS" -> "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=500"
                 "SOCIAL" -> "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=500"
@@ -353,6 +421,37 @@ class EventDetailViewModel @Inject constructor(
                 isSavingUpdate = false
                 _error.value = "Evento actualizado correctamente"
                 onSuccess()
+
+                // Lógica de Notificaciones: Avisar a los participantes del cambio (excluyendo al organizador)
+                viewModelScope.launch {
+                    try {
+                        val idsANotificar = currentEvent.participantsIds.filter { it != userUid }
+                        if (idsANotificar.isNotEmpty()) {
+                            val tokensList = mutableListOf<String>()
+
+                            for (id in idsANotificar) {
+                                val doc = firestore.collection("users").document(id).get().await()
+                                val token = doc.getString("fcmToken")
+                                if (!token.isNullOrBlank()) {
+                                    tokensList.add(token)
+                                }
+                            }
+
+                            if (tokensList.isNotEmpty()) {
+                                com.example.rankup.data.network.FcmSender.enviarNotificacionPush(
+                                    context = context,
+                                    tokensParticipantes = tokensList,
+                                    titulo = "¡Evento actualizado!",
+                                    mensaje = "El evento '$editTitle' ha sido modificado por el organizador."
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Fallo silencioso en notificación para no romper la experiencia de guardado
+                        android.util.Log.e("NotificationUpdate", "Error enviando push de actualización", e)
+                    }
+                }
+
             }.onFailure {
                 isSavingUpdate = false
                 _error.value = "Error al actualizar el evento en la base de datos."

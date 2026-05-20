@@ -1,2 +1,8 @@
 /build
 /google-services.json
+**/src/main/assets/runk-up-firebase-adminsdk-*.json
+/local.properties
+.gradle
+.idea
+*.jks
+*.keystore
