@@ -127,6 +127,7 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = hiltVi
                     HublyTextField(
                         label = "Correo electrónico",
                         value = state.email,
+                        placeholder = "tu@correo.com",
                         icon = Icons.Default.Email,
                         isError = state.emailError != null, // Se activa si hay mensaje
                         errorMessage = state.emailError,

@@ -111,6 +111,7 @@ fun EventDetailScreen(
     val currentUserId = viewModel.currentUserId
     val isOrganizer = event?.organizer == currentUserId
     val errorMessage by viewModel.error.collectAsState()
+    val participants by viewModel.participantsProfiles.collectAsState()
     val context = LocalContext.current
     val organizerName by viewModel.organizerName.collectAsState()
     var showPasswordDialog by remember { mutableStateOf(false) }
@@ -367,7 +368,7 @@ fun EventDetailScreen(
             }
             if (showParticipantsDialog) {
                 ParticipantsListDialog(
-                    participants = viewModel.participantsProfiles.value,
+                    participants = participants, // ✨ Ahora lee la variable reactiva, ¡no el .value estático!
                     onUserClick = { user ->
                         showParticipantsDialog = false
                         selectedUser = user
@@ -752,7 +753,7 @@ fun ParticipantsListDialog(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Cargando participantes...", color = Color.Gray)
+                    CircularProgressIndicator(color = Color(0xFF6200EE)) // Spinner de carga limpio
                 }
             } else {
                 LazyColumn(

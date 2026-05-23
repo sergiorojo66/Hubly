@@ -180,7 +180,6 @@ class AuthViewModel @Inject constructor(
             val doc = userRef.get().await()
 
             if (!doc.exists()) {
-                // Usamos la Opción A pasándole directamente el fcmToken al constructor de tu User
                 val newUser = User(
                     id = uid,
                     username = sanitizedUsername,
@@ -188,8 +187,8 @@ class AuthViewModel @Inject constructor(
                     email = email,
                     initials = defaultName.take(1).uppercase(),
                     bio = "¡Hola! Soy nuevo en Hubly.",
-                    rating = 5.0,
-                    fcmToken = fcmToken // 👈 Mapeado impecable
+                    rating = 0.0,
+                    fcmToken = fcmToken
                 )
                 userRef.set(newUser).await()
             } else {
