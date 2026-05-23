@@ -7,6 +7,6 @@ data class User(
     val email: String = "",
     val bio: String = "¡Hola! Soy nuevo en Hubly.",
     val initials: String = "U",
-    val rating: Double = 5.0,
+    val rating: Double = 0.0,
     val fcmToken: String? = null // 👈 Añade esto en tu clase User.kt si usas la Opción A
 )

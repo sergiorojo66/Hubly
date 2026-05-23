@@ -1,5 +1,6 @@
 package com.example.rankup.ui.eventDetailScreen.components
 
+import androidx.compose.foundation.clickable // ✨ Importante para hacer clicable la fila
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,7 +39,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rankup.domain.model.RankingUser
+import com.example.rankup.domain.model.User
 import com.example.rankup.ui.eventDetailScreen.EventDetailViewModel
+import com.example.rankup.ui.profileScreen.UserProfileDialog
 
 @Composable
 fun RankingSection(viewModel: EventDetailViewModel) {
@@ -51,14 +53,17 @@ fun RankingSection(viewModel: EventDetailViewModel) {
     val isOrganizer = currentUserId.isNotEmpty() && currentUserId == organizerId
 
     var showScoreDialog by remember { mutableStateOf(false) }
-    var selectedUser by remember { mutableStateOf<RankingUser?>(null) }
+    var selectedRankingUser by remember { mutableStateOf<RankingUser?>(null) }
     var scoreInput by remember { mutableStateOf("") }
 
-    // Diálogo (se mantiene igual)
-    if (showScoreDialog && selectedUser != null) {
+    // ✨ Estados para controlar el diálogo del perfil completo
+    var userToShowProfile by remember { mutableStateOf<User?>(null) }
+
+    // Diálogo de asignación de puntos
+    if (showScoreDialog && selectedRankingUser != null) {
         AlertDialog(
             onDismissRequest = { showScoreDialog = false },
-            title = { Text("Asignar puntos a ${selectedUser?.userName}") },
+            title = { Text("Asignar puntos a ${selectedRankingUser?.userName}") },
             text = {
                 OutlinedTextField(
                     value = scoreInput,
@@ -72,7 +77,7 @@ fun RankingSection(viewModel: EventDetailViewModel) {
             confirmButton = {
                 TextButton(onClick = {
                     val points = scoreInput.toIntOrNull() ?: 0
-                    viewModel.updateUserPoints(selectedUser!!.id, points)
+                    viewModel.updateUserPoints(selectedRankingUser!!.id, points)
                     showScoreDialog = false
                     scoreInput = ""
                 }) {
@@ -87,16 +92,23 @@ fun RankingSection(viewModel: EventDetailViewModel) {
         )
     }
 
+    // ✨ Renderizado del Diálogo de Perfil del Usuario al clicar
+    userToShowProfile?.let { completeUser ->
+        UserProfileDialog(
+            user = completeUser,
+            onDismiss = { userToShowProfile = null },
+            viewModel = viewModel
+        )
+    }
+
     if (rankings.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize().padding(40.dp), contentAlignment = Alignment.Center) {
             Text("Aún no hay puntuaciones en este evento", color = Color.Gray)
         }
     } else {
-        // CAMBIO CLAVE: Usamos LazyColumn para permitir scroll
         androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            // Añadimos padding inferior para que el último elemento no lo tape el menú
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 top = 8.dp,
                 start = 16.dp,
@@ -114,13 +126,18 @@ fun RankingSection(viewModel: EventDetailViewModel) {
                 )
             }
 
-            // Renderizado eficiente de la lista
             items(rankings) { user ->
                 RankingUserRow(
                     user = user,
                     isOrganizer = isOrganizer,
+                    onUserClick = {
+                        // ⚡ Cargamos los datos completos del perfil desde Firestore de forma dinámica
+                        viewModel.loadUserProfile(user.id) { fullUserProfile ->
+                            userToShowProfile = fullUserProfile
+                        }
+                    },
                     onAddScoreClick = {
-                        selectedUser = user
+                        selectedRankingUser = user
                         showScoreDialog = true
                     }
                 )
@@ -133,20 +150,21 @@ fun RankingSection(viewModel: EventDetailViewModel) {
 fun RankingUserRow(
     user: RankingUser,
     isOrganizer: Boolean,
+    onUserClick: () -> Unit, // ✨ Callback al pulsar la fila
     onAddScoreClick: () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onUserClick() } // ✨ Al hacer clic en cualquier parte de la tarjeta salta el perfil
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Posición (mismo código que tenías)
-            // Dentro de RankingUserRow
             Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                 when (user.position) {
                     1 -> Text("🥇", fontSize = 24.sp)
@@ -163,13 +181,11 @@ fun RankingUserRow(
 
             Spacer(Modifier.width(12.dp))
 
-            // Info Usuario
             Column(modifier = Modifier.weight(1f)) {
                 Text(user.userName.ifEmpty { "Usuario Anónimo" }, fontWeight = FontWeight.Bold, color = Color.Black)
                 Text("Nivel ${user.level}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
 
-            // Puntos y botón de edición
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "${user.points} pts",
