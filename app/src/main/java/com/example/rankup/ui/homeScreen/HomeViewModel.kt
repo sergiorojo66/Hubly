@@ -6,10 +6,13 @@ import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.repository.EventRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -27,13 +30,29 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
     private val _events = MutableStateFlow<List<Event>>(emptyList())
     val events = _events.asStateFlow()
+    // Añade estos flujos en tu HomeViewModel
+
+    // 1. Ahora mismo: Eventos que ya han comenzado (su fecha es anterior o igual a la actual) y no están finalizados
+    val ahoraMismoEvents = _events.map { list ->
+        val currentTime = System.currentTimeMillis()
+        list.filter { !it.isFinished && it.date <= currentTime }
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // 2. Próximamente: Eventos que ocurrirán en los próximos 7 días
+    val proximamenteEvents = _events.map { list ->
+        val currentTime = System.currentTimeMillis()
+        val sevenDaysInMillis = 7L * 24 * 60 * 60 * 1000 // 7 días en milisegundos
+        list.filter { !it.isFinished && it.date > currentTime && it.date <= (currentTime + sevenDaysInMillis) }
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _stats = MutableStateFlow(HomeStats())
     val stats = _stats.asStateFlow()
 
     init {
-        // 🚀 ¡AQUÍ SE EJECUTA AUTOMÁTICAMENTE AL ABRIR LA PANTALLA!
+        // Ejecutamos todo de forma ordenada al abrir la pantalla
         sincronizarTokenDispositivo()
+        loadDataFromFirebase()
+        loadTotalHublers()
     }
 
     private fun sincronizarTokenDispositivo() {
@@ -43,22 +62,16 @@ class HomeViewModel @Inject constructor(
             if (task.isSuccessful) {
                 val token = task.result
 
-                // Guardamos o actualizamos el token en el documento del usuario en Firestore
                 firestore.collection("users")
                     .document(currentUserId)
                     .update("fcmToken", token)
                     .addOnFailureListener {
-                        // Por si el documento no existe aún, puedes usar set con Merge
                         val data = hashMapOf("fcmToken" to token)
                         firestore.collection("users").document(currentUserId)
-                            .set(data, com.google.firebase.firestore.SetOptions.merge())
+                            .set(data, SetOptions.merge())
                     }
             }
         }
-    }
-
-    init {
-        loadDataFromFirebase()
     }
 
     private fun loadDataFromFirebase() {
@@ -70,16 +83,29 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun updateStats(lista: List<Event>) {
-        val totalParticipants = lista.sumOf { it.participants.toString().toIntOrNull() ?: 0 }
+    private fun loadTotalHublers() {
+        // Consultamos la colección 'users' para ver cuántos documentos (cuentas) existen
+        firestore.collection("users").get()
+            .addOnSuccessListener { snapshot ->
+                val totalUsers = snapshot.size()
+                val formatUsers = if (totalUsers >= 1000) {
+                    String.format("%.1fK", totalUsers / 1000.0)
+                } else {
+                    "$totalUsers"
+                }
 
-        _stats.value = HomeStats(
+                // Actualizamos SOLO la variable participants, conservando el resto intacto
+                _stats.value = _stats.value.copy(participants = formatUsers)
+            }
+            .addOnFailureListener { e ->
+                // Si falla la consulta, se mantiene el "0" por defecto
+            }
+    }
+
+    private fun updateStats(lista: List<Event>) {
+        // Usamos .copy() para actualizar los eventos sin sobreescribir el número total de Hublers
+        _stats.value = _stats.value.copy(
             activeEvents = lista.size,
-            participants = if (totalParticipants >= 1000) {
-                String.format("%.1fK", totalParticipants / 1000.0)
-            } else {
-                "$totalParticipants"
-            },
             competitions = lista.count { it.category == "Competitivo" || it.category == "eSports" }
         )
     }

@@ -99,29 +99,19 @@ fun HomeScreen(
                 elevation = CardDefaults.cardElevation(1.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly // Reparte el espacio simétricamente
                 ) {
                     SmallStat(Icons.Default.TrendingUp, "${stats.activeEvents}", "Eventos")
-                    VerticalDivider(modifier = Modifier.height(25.dp).align(Alignment.CenterVertically), thickness = 1.dp, color = Color(0xFFEEEEEE))
-                    SmallStat(Icons.Default.Group, stats.participants, "Hublers")
-                    VerticalDivider(modifier = Modifier.height(25.dp).align(Alignment.CenterVertically), thickness = 1.dp, color = Color(0xFFEEEEEE))
-                    SmallStat(Icons.Default.EmojiEvents, "${stats.competitions}", "Premios")
-                }
-            }
-        }
 
-        // --- CATEGORÍAS ---
-        item {
-            Text("Categorías", modifier = Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.Black)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CategoryChip(Icons.Default.EmojiEvents, "Torneos", Color(0xFFFFEDE7), Color(0xFFFF5722))
-                CategoryChip(Icons.Default.SportsEsports, "eSports", Color(0xFFF3E5F5), Color(0xFF7B1FA2))
-                CategoryChip(Icons.Default.MusicNote, "Social", Color(0xFFE8F5E9), Color(0xFF2E7D32))
+                    VerticalDivider(
+                        modifier = Modifier.height(30.dp).align(Alignment.CenterVertically),
+                        thickness = 1.dp,
+                        color = Color(0xFFEEEEEE)
+                    )
+
+                    SmallStat(Icons.Default.Group, stats.participants, "Hublers")
+                }
             }
         }
 
