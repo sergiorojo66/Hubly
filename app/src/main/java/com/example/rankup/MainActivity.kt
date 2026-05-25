@@ -48,9 +48,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Permiso concedido, las notificaciones funcionarán sin problemas
         } else {
-            // El usuario denegó el permiso. Puedes mostrar un aviso si quieres.
         }
     }
 
@@ -59,7 +57,6 @@ class MainActivity : ComponentActivity() {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
                 PackageManager.PERMISSION_GRANTED
             ) {
-                // Si no tenemos el permiso, lo solicitamos al usuario
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -72,7 +69,6 @@ fun RankUpNavGraph() {
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     val startDest = if (currentUser != null) {
-        // 🚀 ¡LLAMADA CLAVE! Si el usuario ya está logueado al abrir la app, registramos/actualizamos su token
         registrarTokenDispositivo(currentUser.uid)
         Screen.Main.route
     } else {
@@ -84,8 +80,6 @@ fun RankUpNavGraph() {
         composable(Screen.Signup.route) { SignupScreen(navController) }
 
         composable(Screen.Main.route) {
-            // Nota: Asegúrate también de llamar a registrarTokenDispositivo(uid)
-            // en tu LoginScreen/SignupScreen justo cuando el login tenga éxito.
             MainScreen(onLogout = {
                 navController.navigate(Screen.Login.route) {
                     popUpTo(0) { inclusive = true }
@@ -100,7 +94,6 @@ fun registrarTokenDispositivo(currentUserId: String) {
     FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
         if (task.isSuccessful) {
             val token = task.result
-            // Guardamos el token en el documento del usuario actual
             FirebaseFirestore.getInstance()
                 .collection("users")
                 .document(currentUserId)

@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 interface EventRepository {
     fun getEvents(): Flow<List<Event>>
     fun getEventById(eventId: String): Flow<Event?>
-    suspend fun createEvent(event: Event): Result<String> // Cambia Unit por String
+    suspend fun createEvent(event: Event): Result<String>
     suspend fun joinEvent(eventId: String, userId: String, userName: String): Result<Unit>
     fun getChatMessages(eventId: String): Flow<List<ChatMessage>>
     suspend fun sendMessage(eventId: String, message: ChatMessage)

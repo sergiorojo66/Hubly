@@ -105,7 +105,6 @@ fun EventDetailScreen(
     val event by viewModel.event.collectAsState()
     var selectedTab by remember { mutableStateOf("info") }
     val isJoined by viewModel.isUserJoined.collectAsState()
-    var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showLeaveDialog by remember { mutableStateOf(false) }
     val currentUserId = viewModel.currentUserId
@@ -159,7 +158,7 @@ fun EventDetailScreen(
                         showParticipantsDialog = true
                     },
                     onEditEvent = {
-                        viewModel.prepareEditForm(e) // Rellena el formulario con los datos actuales del evento
+                        viewModel.prepareEditForm(e)
                         showEditDialog = true
                     },
                     loadUserProfile = { userId, onResult -> viewModel.loadUserProfile(userId, onResult) }
@@ -368,7 +367,7 @@ fun EventDetailScreen(
             }
             if (showParticipantsDialog) {
                 ParticipantsListDialog(
-                    participants = participants, // ✨ Ahora lee la variable reactiva, ¡no el .value estático!
+                    participants = participants,
                     onUserClick = { user ->
                         showParticipantsDialog = false
                         selectedUser = user
@@ -753,7 +752,7 @@ fun ParticipantsListDialog(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color(0xFF6200EE)) // Spinner de carga limpio
+                    CircularProgressIndicator(color = Color(0xFF6200EE))
                 }
             } else {
                 LazyColumn(
@@ -819,7 +818,7 @@ fun EditEventDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {},
-        containerColor = Color(0xFFF8F9FA), // Fondo de tu app
+        containerColor = Color(0xFFF8F9FA),
         shape = RoundedCornerShape(24.dp),
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -838,7 +837,6 @@ fun EditEventDialog(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                // 1. INFORMACIÓN BÁSICA
                 CreateEventCard {
                     Text("Información básica", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp), color = Color.Black)
 
@@ -858,7 +856,6 @@ fun EditEventDialog(
                         onValueChange = { viewModel.editDescription = it }
                     )
 
-                    // Adaptador seguro para el selector Enum de tu CreateScreen anterior
                     val currentEnumCategory = try {
                         EventCategory.valueOf(viewModel.editCategory)
                     } catch (e: Exception) {
@@ -898,7 +895,6 @@ fun EditEventDialog(
                     }
                 }
 
-                // 2. PRIVACIDAD Y SEGURIDAD
                 CreateEventCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -944,7 +940,6 @@ fun EditEventDialog(
                     }
                 }
 
-                // 3. MÓDULOS OPCIONALES
                 CreateEventCard {
                     Text("Módulos opcionales", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp), color = Color.Black)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -962,7 +957,6 @@ fun EditEventDialog(
                     }
                 }
 
-                // 4. ACCIONES DEL DIÁLOGO
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)

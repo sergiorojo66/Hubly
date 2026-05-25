@@ -153,9 +153,6 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // 1. Asegúrate de importar Firebase Messaging arriba del archivo si no lo tienes:
-// import com.google.firebase.messaging.FirebaseMessaging
-
     suspend fun ensureUserProfileExists() {
         val currentUser = firebaseAuth.currentUser ?: return
         val uid = currentUser.uid
@@ -168,7 +165,6 @@ class AuthViewModel @Inject constructor(
             else "Usuario ${uid.take(5)}"
 
         try {
-            // Recuperamos el token de FCM de manera asíncrona pero secuencial
             val fcmToken = try {
                 FirebaseMessaging.getInstance().token.await()
             } catch (e: Exception) {
@@ -192,7 +188,6 @@ class AuthViewModel @Inject constructor(
                 )
                 userRef.set(newUser).await()
             } else {
-                // Si el usuario ya existe (Sergio logueándose), actualizamos el token por si acaso
                 if (fcmToken != null) {
                     userRef.update("fcmToken", fcmToken).await()
                 }

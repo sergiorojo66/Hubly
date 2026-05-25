@@ -21,5 +21,4 @@ sealed class AuthEvent {
     data class GoogleSignInClicked(val context: android.content.Context) : AuthEvent()
     object LoginClicked : AuthEvent()
     object Logout : AuthEvent()
-    object ForgotPasswordClicked : AuthEvent()
 }

@@ -32,14 +32,13 @@ import com.example.rankup.ui.profileScreen.ProfileScreen
 fun MainScreen(onLogout: () -> Unit) {
     val navController = rememberNavController()
 
-    // ✨ Incluimos Screen.MyEvents dejando el botón 'Crear' exactamente en medio
     val items = listOf(Screen.Home, Screen.Explore, Screen.Create, Screen.MyEvents, Screen.Profile)
 
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = Color.White, // Fondo de la barra limpio
-                tonalElevation = 8.dp // Sombra suave para separarla del contenido
+                containerColor = Color.White,
+                tonalElevation = 8.dp
             ) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
@@ -52,13 +51,9 @@ fun MainScreen(onLogout: () -> Unit) {
                         label = { Text(screen.label) },
                         selected = isSelected,
                         colors = NavigationBarItemDefaults.colors(
-                            // Icono y texto cuando están seleccionados
                             selectedIconColor = Color(0xFF6200EE),
                             selectedTextColor = Color(0xFF6200EE),
-                            // Color de la "píldora" de fondo detrás del icono seleccionado
                             indicatorColor = Color(0xFF6200EE).copy(alpha = 0.1f),
-
-                            // Icono y texto cuando NO están seleccionados (Gris apagado)
                             unselectedIconColor = Color.Gray,
                             unselectedTextColor = Color.Gray
                         ),
@@ -82,12 +77,8 @@ fun MainScreen(onLogout: () -> Unit) {
             composable(Screen.Home.route) { HomeScreen(navController) }
             composable(Screen.Explore.route) { ExploreScreen(navController) }
             composable(Screen.Create.route) { CreateEventScreen(navController) }
-
-            // ✨ Registro de la nueva pantalla en el grafo de navegación
             composable(Screen.MyEvents.route) { MyEventsScreen(navController) }
-
             composable(Screen.Profile.route) { ProfileScreen(navController, onLogout) }
-
             composable(
                 route = Screen.EventDetail.route,
                 arguments = listOf(navArgument("eventId") { type = NavType.StringType })

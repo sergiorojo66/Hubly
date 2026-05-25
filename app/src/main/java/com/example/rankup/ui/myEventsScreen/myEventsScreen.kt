@@ -30,20 +30,14 @@ fun MyEventsScreen(
 ) {
     val events by viewModel.events.collectAsStateWithLifecycle()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
-
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Mis eventos", "Mis inscripciones")
-
-    // ✨ Estado para controlar si mostramos u ocultamos los finalizados
     var showFinished by remember { mutableStateOf(false) }
-
-    // Listas base filtradas por rol (Creador vs Participante)
     val baseMisEventos = events.filter { it.organizer == currentUserId }
     val baseMisInscripciones = events.filter {
         it.participantsIds.contains(currentUserId) && it.organizer != currentUserId
     }
 
-    // APLICAMOS EL FILTRO DINÁMICO SEGÚN EL SWITCH
     val listaFiltrada = if (selectedTabIndex == 0) {
         if (showFinished) baseMisEventos else baseMisEventos.filter { !it.isFinished }
     } else {
@@ -55,7 +49,6 @@ fun MyEventsScreen(
             .fillMaxSize()
             .background(Color(0xFFF8F9FA))
     ) {
-        // --- CABECERA MORADA UNIFICADA ---
         Box(modifier = Modifier.fillMaxWidth().height(150.dp)) {
             Box(
                 modifier = Modifier
@@ -73,7 +66,6 @@ fun MyEventsScreen(
                 )
             }
 
-            // CONTENEDOR DE PESTAÑAS (TABS) SOLAPADO
             Card(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -114,7 +106,6 @@ fun MyEventsScreen(
             }
         }
 
-        // --- ✨ FILTRO SWITCH PARA EVENTOS FINALIZADOS ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -140,7 +131,6 @@ fun MyEventsScreen(
             )
         }
 
-        // --- LISTADO DE EVENTOS FILTRADOS ---
         if (listaFiltrada.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -163,7 +153,6 @@ fun MyEventsScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                // Ordenamos para que los finalizados (si se muestran) queden abajo del todo
                 val listaOrdenada = listaFiltrada.sortedBy { it.isFinished }
 
                 items(listaOrdenada) { event ->

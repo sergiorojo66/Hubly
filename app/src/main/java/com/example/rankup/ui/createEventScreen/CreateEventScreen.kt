@@ -5,14 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -86,7 +84,7 @@ fun CreateEventScreen(
                     Text("Previsualización del evento", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp), color = Black)
 
                     AsyncImage(
-                        model = when (state.category) { // Misma lógica que el ViewModel
+                        model = when (state.category) {
                             EventCategory.SPORTS -> "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=500"
                             EventCategory.SOCIAL -> "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=500"
                             EventCategory.ESPORTS -> "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500"
@@ -231,7 +229,6 @@ fun CreateEventScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // INFO siempre activo
                     ModuleChip(
                         label = "Info",
                         isSelected = true,

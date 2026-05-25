@@ -21,9 +21,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.rankup.domain.model.Event
-import com.example.rankup.ui.homeScreen.components.CategoryChip
 import com.example.rankup.ui.homeScreen.components.FeaturedEventCard
-import com.example.rankup.ui.homeScreen.components.StatCard
 import com.example.rankup.ui.homeScreen.components.formatDate
 
 @Composable
@@ -43,13 +41,12 @@ fun HomeScreen(
             .fillMaxSize()
             .background(Color(0xFFF8F9FA))
     ) {
-        // --- CABECERA MÁS COMPACTA ---
         item {
-            Box(modifier = Modifier.fillMaxWidth().height(130.dp)) { // Reducido de 220 a 180
+            Box(modifier = Modifier.fillMaxWidth().height(130.dp)) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp) // Reducido de 180 a 150
+                        .height(100.dp)
                         .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
                         .background(Brush.verticalGradient(listOf(Color(0xFF7C4DFF), Color(0xFF6200EE))))
                         .padding(horizontal = 24.dp, vertical = 20.dp)
@@ -60,7 +57,6 @@ fun HomeScreen(
                     }
                 }
 
-                // BARRA DE BÚSQUEDA MÁS ARRIBA
                 Card(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -90,7 +86,6 @@ fun HomeScreen(
             }
         }
 
-        // --- ESTADÍSTICAS CON MENOS PADDING ---
         item {
             Card(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp).fillMaxWidth(),
@@ -100,7 +95,7 @@ fun HomeScreen(
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly // Reparte el espacio simétricamente
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     SmallStat(Icons.Default.TrendingUp, "${stats.activeEvents}", "Eventos")
 
@@ -115,7 +110,6 @@ fun HomeScreen(
             }
         }
 
-        // --- SECCIÓN: AHORA MISMO (CARRUSEL MÁS ANCHO) ---
         item {
             SectionHeader("Ahora mismo", "Ver más") { navController.navigate("explore") }
         }
@@ -131,7 +125,7 @@ fun HomeScreen(
                     activeEvents.take(3).forEach { event ->
                         FeaturedEventCard(
                             event = event,
-                            modifier = Modifier.width(310.dp), // Más ancho para que no se vea tan estrecho
+                            modifier = Modifier.width(310.dp),
                             onClick = { navController.navigate("event_detail/${event.id}") }
                         )
                     }
@@ -140,7 +134,6 @@ fun HomeScreen(
             }
         }
 
-        // --- SECCIÓN: PRÓXIMAMENTE (CON FECHAS) ---
         item {
             SectionHeader("Próximamente", "") {}
         }
@@ -184,7 +177,6 @@ fun UpcomingEventItem(event: Event, onClick: () -> Unit) {
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Miniatura o Icono de fecha
             Box(
                 modifier = Modifier.size(50.dp).background(Color(0xFFF3E5F5), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center

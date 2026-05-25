@@ -56,7 +56,7 @@ fun FeaturedEventCard(
                 model = event.imageUrl,
                 contentDescription = null,
                 modifier = Modifier
-                    .size(90.dp) // Un poco más pequeño para ganar espacio
+                    .size(90.dp)
                     .padding(8.dp)
                     .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop
@@ -74,7 +74,7 @@ fun FeaturedEventCard(
                 ) {
                     Text(
                         text = event.title,
-                        style = MaterialTheme.typography.bodyLarge, // Cambiado de titleMedium
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black,
                         maxLines = 1,

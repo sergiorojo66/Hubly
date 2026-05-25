@@ -41,7 +41,6 @@ class ProfileViewModel @Inject constructor(
                 val snapshot = firestore.collection("users").document(uid).get().await()
                 userState = snapshot.toObject(User::class.java)
             } catch (e: Exception) {
-                // Manejar error
             }
         }
     }
@@ -56,7 +55,7 @@ class ProfileViewModel @Inject constructor(
                     .update(
                         "displayName", newName,
                         "bio", newBio,
-                        "initials", newInitials // Actualizamos también las iniciales
+                        "initials", newInitials
                     ).await()
 
                 userState = userState?.copy(

@@ -53,7 +53,7 @@ class EventRepositoryImpl @Inject constructor(
             val newDocumentRef = eventCollection.document()
             val eventWithId = event.copy(id = newDocumentRef.id)
             newDocumentRef.set(eventWithId).await()
-            Result.success(newDocumentRef.id) // Devolvemos el ID
+            Result.success(newDocumentRef.id)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -71,19 +71,16 @@ class EventRepositoryImpl @Inject constructor(
                 val participants = event?.participantsIds ?: emptyList()
                 val max = event?.maxParticipants ?: Int.MAX_VALUE
 
-                // 1. Validaciones de negocio
                 if (participants.size >= max) throw Exception("EVENT_FULL")
                 if (participants.contains(userId)) throw Exception("ALREADY_JOINED")
 
-                // 2. Preparar el objeto de Ranking
                 val rankingData = RankingUser(
-                    id = userId, // Asegúrate de que tu modelo usa 'userId' o 'id'
-                    userName = userName, // Usamos el parámetro que pasamos
+                    id = userId,
+                    userName = userName,
                     points = 0,
                     level = 1
                 )
 
-                // 3. Ejecutar operaciones dentro de la transacción
                 transaction.set(rankingRef, rankingData)
                 transaction.update(eventRef, "participantsIds", FieldValue.arrayUnion(userId))
             }.await()
@@ -103,7 +100,6 @@ class EventRepositoryImpl @Inject constructor(
                 if (error != null) return@addSnapshotListener
 
                 val msgs = snapshot?.documents?.mapNotNull { doc ->
-                    // Mapeamos el objeto y, si por alguna razón el ID viniera vacío, lo recuperamos del nombre del documento
                     doc.toObject(ChatMessage::class.java)?.copy(id = doc.id)
                 } ?: emptyList()
 
@@ -112,21 +108,16 @@ class EventRepositoryImpl @Inject constructor(
         awaitClose { subscription.remove() }
     }
 
-    // En EventRepositoryImpl.kt
-
     override suspend fun sendMessage(eventId: String, message: ChatMessage) {
         try {
             val messagesCollection = firestore.collection("events")
                 .document(eventId)
                 .collection("messages")
 
-            // 1. Creamos una referencia de documento vacía para obtener la ID
             val newDocRef = messagesCollection.document()
 
-            // 2. Copiamos el mensaje con la ID del documento recién creado
             val messageWithId = message.copy(id = newDocRef.id)
 
-            // 3. Guardamos el objeto completo (ahora el campo 'id' en Firebase tendrá valor)
             newDocRef.set(messageWithId).await()
         } catch (e: Exception) {
             Log.e("Repository", "Error enviando mensaje: ${e.message}")
@@ -140,9 +131,7 @@ class EventRepositoryImpl @Inject constructor(
             val rankingRef = eventRef.collection("rankings").document(userId)
 
             firestore.runTransaction { transaction ->
-                // 1. Eliminar del array de participantes
                 transaction.update(eventRef, "participantsIds", FieldValue.arrayRemove(userId))
-                // 2. Eliminar su documento de ranking
                 transaction.delete(rankingRef)
             }.await()
 
@@ -154,8 +143,6 @@ class EventRepositoryImpl @Inject constructor(
 
     override suspend fun deleteEvent(eventId: String): Result<Unit> {
         return try {
-            // Nota: En Firestore, borrar un documento no borra sus subcolecciones automáticamente.
-            // Por simplicidad borramos el evento. Los rankings quedarían huérfanos pero no visibles.
             firestore.collection("events").document(eventId).delete().await()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -167,7 +154,7 @@ class EventRepositoryImpl @Inject constructor(
         return try {
             firestore.collection("events")
                 .document(eventId)
-                .update("isFinished", true) // Cambiamos el estado a true
+                .update("isFinished", true)
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {

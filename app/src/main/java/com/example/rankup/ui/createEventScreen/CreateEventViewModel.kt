@@ -25,7 +25,6 @@ class CreateEventViewModel @Inject constructor(
     var state by mutableStateOf(CreateEventState())
         private set
 
-    // Devuelve los milisegundos de hoy a las 00:00:00.000 para que cualquier hora de hoy sea válida
     private val todayStartMillis: Long
         get() = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
@@ -34,7 +33,6 @@ class CreateEventViewModel @Inject constructor(
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
-    // Añadida la comprobación: state.date debe ser mayor o igual al inicio del día de hoy
     val isFormValid: Boolean
         get() = state.title.isNotBlank() &&
                 state.location.isNotBlank() &&
@@ -46,7 +44,6 @@ class CreateEventViewModel @Inject constructor(
     fun onCategoryChange(newValue: String) { state = state.copy(category = EventCategory.valueOf(newValue)) }
     fun onLocationChange(newValue: String) { state = state.copy(location = newValue) }
 
-    // Al cambiar la fecha, limpiamos el error si la fecha pasa a ser correcta, o lanzamos aviso si es pasada
     fun onDateChange(newValue: Long) {
         val isPastDate = newValue < todayStartMillis
         state = state.copy(
@@ -80,7 +77,6 @@ class CreateEventViewModel @Inject constructor(
         )
     }
     fun createEvent(onSuccess: () -> Unit) {
-        // Doble verificación por seguridad antes de lanzar la corrutina
         if (!isFormValid) {
             state = state.copy(error = "Por favor, revisa los datos introducidos.")
             return
@@ -91,7 +87,6 @@ class CreateEventViewModel @Inject constructor(
             val currentUserId = auth.currentUser?.uid ?: return@launch
 
             try {
-                // 1. Obtener el nombre real del creador antes de crear el evento
                 val userDoc = FirebaseFirestore.getInstance().collection("users").document(currentUserId).get().await()
                 val realName = userDoc.getString("displayName") ?: "Organizador"
 
@@ -118,7 +113,6 @@ class CreateEventViewModel @Inject constructor(
                     participantsIds = listOf(currentUserId)
                 )
 
-                // 2. Crear el evento y recibir el ID generado
                 eventRepository.createEvent(newEvent).onSuccess { generatedId ->
                     val creatorRanking = RankingUser(
                         id = currentUserId,
@@ -127,7 +121,6 @@ class CreateEventViewModel @Inject constructor(
                         level = 1
                     )
 
-                    // 3. Crear el ranking usando el ID generado (generatedId)
                     FirebaseFirestore.getInstance()
                         .collection("events")
                         .document(generatedId)

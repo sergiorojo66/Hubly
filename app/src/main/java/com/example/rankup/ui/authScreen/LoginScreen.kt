@@ -145,12 +145,6 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = hiltVie
                         onValueChange = { viewModel.onEvent(AuthEvent.PasswordChanged(it)) }
                     )
 
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                        TextButton(onClick = { /* TODO: Implementar recovery */ }) {
-                            Text("¿Olvidaste tu contraseña?", color = Color(0xFF6D31FF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Button(
