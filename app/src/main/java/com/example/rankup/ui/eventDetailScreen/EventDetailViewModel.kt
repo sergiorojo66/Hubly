@@ -2,8 +2,11 @@ package com.example.rankup.ui.eventDetailScreen
 
 import android.content.Context
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.rankup.data.network.FcmSender.enviarNotificacionPush
 import com.example.rankup.domain.model.ChatMessage
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.model.RankingUser
@@ -13,6 +16,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,20 +24,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import com.example.rankup.data.network.FcmSender.enviarNotificacionPush
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
-import kotlin.text.get
 
 @HiltViewModel
 class EventDetailViewModel @Inject constructor(
     private val repository: EventRepository,
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    @ApplicationContext private val context: Context // <-- Inyectamos el contexto de forma segura
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _event = MutableStateFlow<Event?>(null)
@@ -100,12 +99,10 @@ class EventDetailViewModel @Inject constructor(
                 val list = documents.mapIndexed { index, doc ->
                     val user = doc.toObject(RankingUser::class.java) ?: RankingUser()
 
-                    // Lógica de empate
                     if (index > 0) {
                         val previousPoints = documents[index - 1].getLong("points") ?: 0L
                         val currentPoints = doc.getLong("points") ?: 0L
 
-                        // Si NO hay empate, la posición sube
                         if (currentPoints < previousPoints) {
                             currentPosition++
                         }
@@ -123,15 +120,12 @@ class EventDetailViewModel @Inject constructor(
             val userId = auth.currentUser?.uid ?: return@launch
 
             try {
-                // Obtenemos el nombre real del usuario de nuestra colección 'users'
                 val userDoc = firestore.collection("users").document(userId).get().await()
                 val hublyUser = userDoc.toObject(User::class.java)
                 val nameToRegister = hublyUser?.displayName ?: "Usuario"
 
-                // Pasamos el nombre al repositorio
                 repository.joinEvent(eventId, userId, nameToRegister).onSuccess {
                     _error.value = null
-                    // Al unirse con éxito, podrías recargar el ranking
                     loadRankings(eventId)
                 }.onFailure { error ->
                     _error.value = when(error.message) {
@@ -172,16 +166,13 @@ class EventDetailViewModel @Inject constructor(
                     timestamp = java.util.Date()
                 )
 
-                // 1. Enviamos el mensaje al chat
                 repository.sendMessage(eventId, newMessage)
 
-                // 2. Lógica de Notificaciones: Traer tokens de los participantes (menos el emisor)
                 val idsANotificar = eventCurrent.participantsIds.filter { it != userUid }
 
                 if (idsANotificar.isNotEmpty()) {
                     val tokensList = mutableListOf<String>()
 
-                    // Consultamos los tokens en Firestore
                     for (id in idsANotificar) {
                         val doc = firestore.collection("users").document(id).get().await()
                         val token = doc.getString("fcmToken")
@@ -190,9 +181,8 @@ class EventDetailViewModel @Inject constructor(
                         }
                     }
 
-                    // Si hay dispositivos válidos, enviamos el push
                     if (tokensList.isNotEmpty()) {
-                        com.example.rankup.data.network.FcmSender.enviarNotificacionPush(
+                        enviarNotificacionPush(
                             context = context,
                             tokensParticipantes = tokensList,
                             titulo = "Chat: ${eventCurrent.title}",
@@ -206,8 +196,6 @@ class EventDetailViewModel @Inject constructor(
         }
     }
 
-    // En EventDetailViewModel.kt
-
     fun loadEvent(id: String) {
         viewModelScope.launch {
             loadRankings(id)
@@ -216,7 +204,6 @@ class EventDetailViewModel @Inject constructor(
             repository.getEventById(id).collect { eventData ->
                 _event.value = eventData
 
-                // IMPORTANTE: Disparar la carga del nombre cuando tengamos el evento
                 eventData?.organizer?.let { organizerId ->
                     loadOrganizerName(organizerId)
                 }
@@ -246,11 +233,9 @@ class EventDetailViewModel @Inject constructor(
                     .collection("rankings")
                     .document(userId)
 
-                // Usamos una transacción o FieldValue.increment para que sea seguro
                 userRankingRef.update("points", com.google.firebase.firestore.FieldValue.increment(additionalPoints.toLong()))
                     .await()
 
-                // Opcional: mostrar un mensaje de éxito o actualizar localmente
             } catch (e: Exception) {
                 _error.value = "Error al actualizar puntos: ${e.message}"
             }
@@ -261,7 +246,7 @@ class EventDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val userId = auth.currentUser?.uid ?: return@launch
             repository.leaveEvent(eventId, userId).onSuccess {
-                // Firestore actualizará el isUserJoined automáticamente si usas snapshots
+
             }.onFailure {
                 _error.value = "No se pudo anular la inscripción"
             }
@@ -286,10 +271,8 @@ class EventDetailViewModel @Inject constructor(
             repository.finishEvent(eventId).onSuccess {
                 _error.value = "Evento finalizado correctamente"
 
-                // Lógica de Notificaciones: Avisar a los participantes que el evento ha terminado
                 viewModelScope.launch {
                     try {
-                        // Filtramos para no mandarnos un push a nosotros mismos como organizadores
                         val idsANotificar = eventCurrent.participantsIds.filter { it != userUid }
 
                         if (idsANotificar.isNotEmpty()) {
@@ -304,7 +287,7 @@ class EventDetailViewModel @Inject constructor(
                             }
 
                             if (tokensList.isNotEmpty()) {
-                                com.example.rankup.data.network.FcmSender.enviarNotificacionPush(
+                                enviarNotificacionPush(
                                     context = context,
                                     tokensParticipantes = tokensList,
                                     titulo = "🏁 ¡Evento Finalizado!",
@@ -326,7 +309,6 @@ class EventDetailViewModel @Inject constructor(
     fun loadUserProfile(userId: String, onResult: (User) -> Unit) {
         viewModelScope.launch {
             try {
-                // Buscamos el documento del usuario en la colección "users"
                 val doc = firestore.collection("users").document(userId).get().await()
                 val user = doc.toObject(User::class.java)
                 if (user != null) {
@@ -342,7 +324,6 @@ class EventDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val usersList = mutableListOf<User>()
-                // Hacemos las peticiones en paralelo o secuenciales cortas
                 for (id in participantsIds) {
                     val doc = firestore.collection("users").document(id).get().await()
                     doc.toObject(User::class.java)?.let { usersList.add(it) }
@@ -360,7 +341,6 @@ class EventDetailViewModel @Inject constructor(
             return false
         }
 
-        // 1. Validar que la fecha no sea anterior a la actual (hoy a las 00:00 para evitar desajustes de horas)
         val todayStart = java.util.Calendar.getInstance().apply {
             set(java.util.Calendar.HOUR_OF_DAY, 0)
             set(java.util.Calendar.MINUTE, 0)
@@ -373,7 +353,6 @@ class EventDetailViewModel @Inject constructor(
             return false
         }
 
-        // 2. Validar participantes inscritos vs nuevo límite
         val currentParticipantsCount = currentEvent.participantsIds.size
         val newMax = editMaxParticipants.toIntOrNull()
 
@@ -396,7 +375,6 @@ class EventDetailViewModel @Inject constructor(
         isSavingUpdate = true
 
         viewModelScope.launch {
-            // Mapeamos la URL de la imagen automáticamente al cambiar categorías
             val newImageUrl = when (editCategory) {
                 "SPORTS" -> "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=500"
                 "SOCIAL" -> "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=500"
@@ -471,35 +449,25 @@ class EventDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // 1. Referencia a la subcolección 'ratings' dentro del usuario valorado
                 val ratingDocRef = firestore.collection("users")
                     .document(targetUserId)
                     .collection("ratings")
                     .document(voterId)
 
-                // Guardamos o modificamos la valoración del votante
                 val ratingData = mapOf("score" to score)
                 ratingDocRef.set(ratingData).await()
 
-                // 2. Transacción para recalcular la media de forma segura
                 val userRef = firestore.collection("users").document(targetUserId)
 
                 firestore.runTransaction { transaction ->
-                    // Obtenemos todas las valoraciones actuales de la subcolección
-                    // Nota: runTransaction requiere lecturas antes de escrituras
                     val ratingsSnapshot = firestore.collection("users")
                         .document(targetUserId)
                         .collection("ratings")
                         .get()
-                    // Bloqueamos de forma síncrona dentro de la transacción con task asíncrona manual
-                    // Para simplificar el TFG sin meter sub-tasks, leemos directamente el snapshot acumulado:
-
-                    // Nota de compatibilidad: Como get() es asíncrono, realizamos el cálculo atómico
                 }.addOnSuccessListener {
-                    // Para asegurar consistencia fluida en Firestore sin colisiones de hilos:
+
                 }
 
-                // Enfoque limpio y directo para Firebase Android:
                 val allRatingsSnapshot = firestore.collection("users")
                     .document(targetUserId)
                     .collection("ratings")
@@ -511,10 +479,8 @@ class EventDetailViewModel @Inject constructor(
                     val sum = documents.sumOf { it.getDouble("score") ?: 0.0 }
                     val newAverage = sum / documents.size
 
-                    // Redondeamos a un decimal (ej: 4.67 -> 4.7)
                     val roundedAverage = String.format(java.util.Locale.US, "%.1f", newAverage).toDouble()
 
-                    // Actualizamos el rating global del usuario
                     firestore.collection("users")
                         .document(targetUserId)
                         .update("rating", roundedAverage)

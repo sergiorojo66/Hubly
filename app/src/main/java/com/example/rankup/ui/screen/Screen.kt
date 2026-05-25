@@ -15,7 +15,7 @@ sealed class Screen(val route: String, val label: String = "", val icon: ImageVe
     object Home : Screen("home", "Inicio", Icons.Default.Home)
     object Explore : Screen("explore", "Explorar", Icons.Default.Explore)
     object Create : Screen("create", "Crear", Icons.Default.AddCircle)
-    object MyEvents : Screen("my_events", "Actividad", Icons.Default.Event) // ✨ Nueva pestaña
+    object MyEvents : Screen("my_events", "Actividad", Icons.Default.Event)
     object Profile : Screen("profile", "Perfil", Icons.Default.Person)
     object EventDetail : Screen("event_detail/{eventId}") {
         fun createRoute(eventId: String) = "event_detail/$eventId"

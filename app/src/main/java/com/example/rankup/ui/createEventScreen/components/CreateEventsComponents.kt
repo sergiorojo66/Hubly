@@ -2,7 +2,6 @@ package com.example.rankup.ui.createEventScreen.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -27,9 +26,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -41,13 +37,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.rankup.domain.model.enums.EventCategory
 import com.example.rankup.ui.authScreen.components.HublyTextField
-import com.example.rankup.ui.createEventScreen.CreateEventViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -61,42 +54,6 @@ fun CreateEventCard(content: @Composable ColumnScope.() -> Unit) {
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) { content() }
-    }
-}
-
-@Composable
-fun ModuleSwitchRow(
-    label: String,
-    description: String,
-    icon: ImageVector,
-    isActive: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .background(Color(0xFFF8F9FA), RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = if (isActive) Color(0xFFEDE7F6) else Color(0xFFE0E0E0),
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                icon, null,
-                tint = if (isActive) Color(0xFF6D31FF) else Color.Gray,
-                modifier = Modifier.padding(8.dp)
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text(description, fontSize = 11.sp, color = Color.Gray)
-        }
-        Switch(checked = isActive, onCheckedChange = onToggle)
     }
 }
 
@@ -207,47 +164,6 @@ fun DatePickerField(
 }
 
 @Composable
-fun ModuleSelectionSection(viewModel: CreateEventViewModel) {
-    val state = viewModel.state
-
-    Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        Text(
-            "Módulos del evento",
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.titleMedium
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Módulo Info (Deshabilitado porque es obligatorio)
-            ModuleChip(
-                label = "Info",
-                isSelected = true,
-                enabled = false,
-                onClick = {}
-            )
-
-            // Módulo Chat
-            ModuleChip(
-                label = "Chat",
-                isSelected = state.selectedModules.contains("chat"),
-                onClick = { viewModel.toggleModule("chat") }
-            )
-
-            // Módulo Ranking
-            ModuleChip(
-                label = "Ranking",
-                isSelected = state.selectedModules.contains("ranking"),
-                onClick = { viewModel.toggleModule("ranking") }
-            )
-        }
-    }
-}
-
-@Composable
 fun ModuleChip(
     label: String,
     isSelected: Boolean,
@@ -269,14 +185,11 @@ fun ModuleChip(
         } else null,
         shape = RoundedCornerShape(12.dp),
         colors = FilterChipDefaults.filterChipColors(
-            // Estado seleccionado: Morado vibrante con texto blanco puro
             selectedContainerColor = Color(0xFF6D31FF),
             selectedLabelColor = Color.White,
             selectedLeadingIconColor = Color.White,
-            // Estado no seleccionado: Fondo lila muy suave (no blanco total) para que destaque
             containerColor = Color(0xFFF3F0FF),
-            labelColor = Color(0xFF6D31FF), // Texto morado para que se lea bien
-            // Estado deshabilitado (Info)
+            labelColor = Color(0xFF6D31FF),
             disabledContainerColor = Color(0xFFF1F1F1),
             disabledLabelColor = Color.LightGray
         ),

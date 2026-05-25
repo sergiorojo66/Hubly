@@ -30,18 +30,14 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
     private val _events = MutableStateFlow<List<Event>>(emptyList())
     val events = _events.asStateFlow()
-    // Añade estos flujos en tu HomeViewModel
-
-    // 1. Ahora mismo: Eventos que ya han comenzado (su fecha es anterior o igual a la actual) y no están finalizados
     val ahoraMismoEvents = _events.map { list ->
         val currentTime = System.currentTimeMillis()
         list.filter { !it.isFinished && it.date <= currentTime }
     }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // 2. Próximamente: Eventos que ocurrirán en los próximos 7 días
     val proximamenteEvents = _events.map { list ->
         val currentTime = System.currentTimeMillis()
-        val sevenDaysInMillis = 7L * 24 * 60 * 60 * 1000 // 7 días en milisegundos
+        val sevenDaysInMillis = 7L * 24 * 60 * 60 * 1000
         list.filter { !it.isFinished && it.date > currentTime && it.date <= (currentTime + sevenDaysInMillis) }
     }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -49,7 +45,6 @@ class HomeViewModel @Inject constructor(
     val stats = _stats.asStateFlow()
 
     init {
-        // Ejecutamos todo de forma ordenada al abrir la pantalla
         sincronizarTokenDispositivo()
         loadDataFromFirebase()
         loadTotalHublers()
@@ -84,7 +79,6 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun loadTotalHublers() {
-        // Consultamos la colección 'users' para ver cuántos documentos (cuentas) existen
         firestore.collection("users").get()
             .addOnSuccessListener { snapshot ->
                 val totalUsers = snapshot.size()
@@ -93,17 +87,14 @@ class HomeViewModel @Inject constructor(
                 } else {
                     "$totalUsers"
                 }
-
-                // Actualizamos SOLO la variable participants, conservando el resto intacto
                 _stats.value = _stats.value.copy(participants = formatUsers)
             }
             .addOnFailureListener { e ->
-                // Si falla la consulta, se mantiene el "0" por defecto
+
             }
     }
 
     private fun updateStats(lista: List<Event>) {
-        // Usamos .copy() para actualizar los eventos sin sobreescribir el número total de Hublers
         _stats.value = _stats.value.copy(
             activeEvents = lista.size,
             competitions = lista.count { it.category == "Competitivo" || it.category == "eSports" }

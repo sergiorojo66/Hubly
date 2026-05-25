@@ -25,8 +25,6 @@ fun ChatSection(viewModel: EventDetailViewModel) {
     val messages by viewModel.chatMessages.collectAsState()
     var messageText by remember { mutableStateOf("") }
     val scrollState = rememberLazyListState()
-
-    // Estado para el usuario seleccionado
     var selectedUser by remember { mutableStateOf<User?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -52,8 +50,6 @@ fun ChatSection(viewModel: EventDetailViewModel) {
                     msg = msg,
                     isMine = isMine,
                     onNameClick = {
-                        // Aquí disparamos la carga del perfil del usuario
-                        // Como solo tienes el ID, usamos la función del ViewModel
                         viewModel.loadUserProfile(msg.senderId) { user ->
                             selectedUser = user
                         }
@@ -64,7 +60,6 @@ fun ChatSection(viewModel: EventDetailViewModel) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // --- BARRA DE ENTRADA (CORREGIDA) ---
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -75,7 +70,6 @@ fun ChatSection(viewModel: EventDetailViewModel) {
                 placeholder = { Text("Escribe un mensaje...", color = Color.Gray) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(24.dp),
-                // FORZAMOS EL COLOR NEGRO AQUÍ
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.Black,
                     unfocusedTextColor = Color.Black,
@@ -91,7 +85,6 @@ fun ChatSection(viewModel: EventDetailViewModel) {
 
             Spacer(Modifier.width(8.dp))
 
-            // RESTAURADO EL BOTÓN DE ENVIAR
             FloatingActionButton(
                 onClick = {
                     if (messageText.isNotBlank()) {
@@ -124,7 +117,7 @@ fun ChatSection(viewModel: EventDetailViewModel) {
 fun ChatBubble(
     msg: ChatMessage,
     isMine: Boolean,
-    onNameClick: () -> Unit // Callback añadido
+    onNameClick: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -137,7 +130,7 @@ fun ChatBubble(
                 color = Color.DarkGray,
                 modifier = Modifier
                     .padding(start = 8.dp, bottom = 2.dp)
-                    .clickable { onNameClick() } // Ejecuta el callback
+                    .clickable { onNameClick() }
             )
         }
         Surface(

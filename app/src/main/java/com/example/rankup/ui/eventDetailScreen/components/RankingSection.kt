@@ -45,21 +45,17 @@ import com.example.rankup.ui.profileScreen.UserProfileDialog
 
 @Composable
 fun RankingSection(viewModel: EventDetailViewModel) {
+
     val rankings by viewModel.rankings.collectAsState()
     val event by viewModel.event.collectAsState()
-
     val currentUserId = viewModel.currentUserId?.trim() ?: ""
     val organizerId = event?.organizer?.trim() ?: ""
     val isOrganizer = currentUserId.isNotEmpty() && currentUserId == organizerId
-
     var showScoreDialog by remember { mutableStateOf(false) }
     var selectedRankingUser by remember { mutableStateOf<RankingUser?>(null) }
     var scoreInput by remember { mutableStateOf("") }
-
-    // ✨ Estados para controlar el diálogo del perfil completo
     var userToShowProfile by remember { mutableStateOf<User?>(null) }
 
-    // Diálogo de asignación de puntos
     if (showScoreDialog && selectedRankingUser != null) {
         AlertDialog(
             onDismissRequest = { showScoreDialog = false },
@@ -92,7 +88,6 @@ fun RankingSection(viewModel: EventDetailViewModel) {
         )
     }
 
-    // ✨ Renderizado del Diálogo de Perfil del Usuario al clicar
     userToShowProfile?.let { completeUser ->
         UserProfileDialog(
             user = completeUser,
@@ -131,7 +126,6 @@ fun RankingSection(viewModel: EventDetailViewModel) {
                     user = user,
                     isOrganizer = isOrganizer,
                     onUserClick = {
-                        // ⚡ Cargamos los datos completos del perfil desde Firestore de forma dinámica
                         viewModel.loadUserProfile(user.id) { fullUserProfile ->
                             userToShowProfile = fullUserProfile
                         }
@@ -150,7 +144,7 @@ fun RankingSection(viewModel: EventDetailViewModel) {
 fun RankingUserRow(
     user: RankingUser,
     isOrganizer: Boolean,
-    onUserClick: () -> Unit, // ✨ Callback al pulsar la fila
+    onUserClick: () -> Unit,
     onAddScoreClick: () -> Unit
 ) {
     Card(
@@ -159,7 +153,7 @@ fun RankingUserRow(
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onUserClick() } // ✨ Al hacer clic en cualquier parte de la tarjeta salta el perfil
+            .clickable { onUserClick() }
     ) {
         Row(
             modifier = Modifier.padding(16.dp),

@@ -8,5 +8,5 @@ data class ChatMessage(
     val senderId: String = "",
     val senderName: String = "",
     val message: String = "",
-    @ServerTimestamp val timestamp: Date? = null // Usa Date para Firebase
+    @ServerTimestamp val timestamp: Date? = null
 )

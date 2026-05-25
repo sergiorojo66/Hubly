@@ -40,15 +40,11 @@ fun ProfileScreen(
 ) {
     val user = viewModel.userState
 
-    // Estados para diálogos y edición
     var showDialog by remember { mutableStateOf(false) }
     var tempName by remember { mutableStateOf("") }
     var tempBio by remember { mutableStateOf("") }
-
     val eventHistory by viewModel.eventHistory.collectAsState()
     var showHistoryDialog by remember { mutableStateOf(false) }
-
-    // ✨ Estados para el menú de Ajustes (Engranaje)
     var showSettingsDialog by remember { mutableStateOf(false) }
     var notificationsSilenced by remember { mutableStateOf(false) }
     val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
@@ -62,7 +58,6 @@ fun ProfileScreen(
             CircularProgressIndicator(color = Color(0xFF6200EE))
         }
     } else {
-        // --- DIÁLOGO: EDITAR PERFIL ---
         if (showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },
@@ -111,7 +106,6 @@ fun ProfileScreen(
             )
         }
 
-        // --- ✨ DIÁLOGO: AJUSTES (Engranaje) ---
         if (showSettingsDialog) {
             AlertDialog(
                 onDismissRequest = { showSettingsDialog = false },
@@ -122,33 +116,6 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Switch de Notificaciones
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    if (notificationsSilenced) Icons.Default.NotificationsOff else Icons.Default.Notifications,
-                                    contentDescription = null,
-                                    tint = Color(0xFF6200EE)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text("Silenciar notificaciones", style = MaterialTheme.typography.bodyMedium, color = Color.Black)
-                            }
-                            Switch(
-                                checked = notificationsSilenced,
-                                onCheckedChange = { notificationsSilenced = it },
-                                colors = SwitchDefaults.colors(
-                                    checkedTrackColor = Color(0xFF6200EE)
-                                )
-                            )
-                        }
-
-                        HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
-
-                        // Botón de Cerrar Sesión integrado aquí dentro
                         TextButton(
                             onClick = {
                                 showSettingsDialog = false
@@ -183,7 +150,6 @@ fun ProfileScreen(
                 .background(Color(0xFFF8F9FA))
                 .verticalScroll(rememberScrollState())
         ) {
-            // --- CABECERA MORADA ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -198,7 +164,6 @@ fun ProfileScreen(
                     ) {
                         Text("Perfil", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
 
-                        // Botón del Engranaje (Ajustes)
                         IconButton(onClick = { showSettingsDialog = true }) {
                             Icon(Icons.Default.Settings, null, tint = Color.White)
                         }
@@ -256,12 +221,10 @@ fun ProfileScreen(
                 }
             }
 
-            // --- CUERPO DE LA PANTALLA ---
             Column(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // ✨ 1. SECCIÓN DE ESTADÍSTICAS DEL USUARIO (Justo después de la cabecera)
                 Text(
                     text = "Mis Estadísticas",
                     style = MaterialTheme.typography.labelLarge,
@@ -360,7 +323,7 @@ fun UserProfileDialog(
 ) {
     var isRatingMode by remember { mutableStateOf(false) }
     var selectedRating by remember { mutableStateOf(0) }
-    var isSavingRating by remember { mutableStateOf(false) } // Para evitar doble clic al guardar
+    var isSavingRating by remember { mutableStateOf(false) }
     val currentUserId = viewModel.currentUserId
 
     AlertDialog(
@@ -380,7 +343,6 @@ fun UserProfileDialog(
                     .padding(top = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Avatar usando las iniciales de tu modelo
                 Surface(
                     modifier = Modifier.size(90.dp),
                     shape = CircleShape,
@@ -398,7 +360,6 @@ fun UserProfileDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Fila de Nombre Público + Botón de Valorar
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -426,7 +387,6 @@ fun UserProfileDialog(
                     }
                 }
 
-                // Nombre único (username)
                 Text(
                     text = user.username,
                     style = MaterialTheme.typography.bodyMedium,
@@ -434,7 +394,6 @@ fun UserProfileDialog(
                     fontWeight = FontWeight.Medium
                 )
 
-                // Puntuación actual
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 4.dp)
@@ -445,7 +404,6 @@ fun UserProfileDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // PANEL INTERACTIVO DE VALORACIÓN
                 if (isRatingMode) {
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -465,7 +423,6 @@ fun UserProfileDialog(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Selector interactivo de 5 estrellas
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 (1..5).forEach { index ->
                                     Icon(
@@ -474,7 +431,7 @@ fun UserProfileDialog(
                                         tint = if (index <= selectedRating) Color(0xFFFFB300) else Color.Gray.copy(alpha = 0.5f),
                                         modifier = Modifier
                                             .size(32.dp)
-                                            .clickable { selectedRating = index } // Cambia el estado visual
+                                            .clickable { selectedRating = index }
                                     )
                                 }
                             }
@@ -484,15 +441,15 @@ fun UserProfileDialog(
                             Button(
                                 onClick = {
                                     if (selectedRating > 0 && !isSavingRating) {
-                                        isSavingRating = true // Bloqueamos el botón inmediatamente
+                                        isSavingRating = true
                                         viewModel.rateUser(user.id, selectedRating.toDouble()) {
                                             isRatingMode = false
                                             isSavingRating = false
-                                            onDismiss() // Cerramos para refrescar la vista
+                                            onDismiss()
                                         }
                                     }
                                 },
-                                enabled = selectedRating > 0 && !isSavingRating, // Se deshabilita durante la subida
+                                enabled = selectedRating > 0 && !isSavingRating,
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6200EE)),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.fillMaxWidth().height(40.dp)
@@ -507,7 +464,6 @@ fun UserProfileDialog(
                     }
                 }
 
-                // Bio del usuario
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
@@ -557,13 +513,12 @@ fun EventHistoryDialog(
                     Text("No has participado en ningún evento aún.", color = Color.Gray, textAlign = TextAlign.Center)
                 }
             } else {
-                // Ordenamos por fecha descendente de forma cronológica
                 val sortedEvents = remember(events) { events.sortedByDescending { it.date } }
 
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 450.dp), // Ajuste dinámico con scroll si hay muchos
+                        .heightIn(max = 450.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(sortedEvents) { event ->
@@ -585,7 +540,6 @@ fun HistoryEventCard(event: Event) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Imagen de fondo del evento
             AsyncImage(
                 model = event.imageUrl,
                 contentDescription = null,
@@ -593,7 +547,6 @@ fun HistoryEventCard(event: Event) {
                 contentScale = ContentScale.Crop
             )
 
-            // Degradado oscuro para que los textos blancos resalten perfectamente
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -604,7 +557,6 @@ fun HistoryEventCard(event: Event) {
                     )
             )
 
-            // Contenido de la tarjeta estilo FeaturedCard
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -616,7 +568,6 @@ fun HistoryEventCard(event: Event) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    // Título y Categoría
                     Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                         Text(
                             text = event.title,
@@ -634,7 +585,6 @@ fun HistoryEventCard(event: Event) {
                         )
                     }
 
-                    // Mini Etiqueta de Estado (En curso / Finalizado)
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = if (event.isFinished) Color(0xFFE57373) else Color(0xFF81C784),
@@ -649,7 +599,6 @@ fun HistoryEventCard(event: Event) {
                     }
                 }
 
-                // Fila inferior: Fecha y participantes
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
