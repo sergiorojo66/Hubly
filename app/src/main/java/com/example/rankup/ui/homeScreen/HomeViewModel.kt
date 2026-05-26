@@ -10,6 +10,7 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted.Companion.WhileSubscribed
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -33,13 +34,13 @@ class HomeViewModel @Inject constructor(
     val ahoraMismoEvents = _events.map { list ->
         val currentTime = System.currentTimeMillis()
         list.filter { !it.isFinished && it.date <= currentTime }
-    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, WhileSubscribed(5000), emptyList())
 
     val proximamenteEvents = _events.map { list ->
         val currentTime = System.currentTimeMillis()
         val sevenDaysInMillis = 7L * 24 * 60 * 60 * 1000
         list.filter { !it.isFinished && it.date > currentTime && it.date <= (currentTime + sevenDaysInMillis) }
-    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, WhileSubscribed(5000), emptyList())
 
     private val _stats = MutableStateFlow(HomeStats())
     val stats = _stats.asStateFlow()
