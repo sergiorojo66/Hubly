@@ -39,7 +39,7 @@ class EventRepositoryImpl @Inject constructor(
         val docRef = firestore.collection("events").document(eventId)
         val subscription = docRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                close(error)
+                Log.e("Firestore", "Ignorando error de permisos al cerrar sesión en getEventById")
                 return@addSnapshotListener
             }
             val event = snapshot?.toObject(Event::class.java)
