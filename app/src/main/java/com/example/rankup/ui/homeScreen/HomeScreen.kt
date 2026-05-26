@@ -29,12 +29,16 @@ fun HomeScreen(
     navController: NavController,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val events by viewModel.events.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
-
-    val activeEvents = events.filter { !it.isFinished && it.title.contains(searchQuery, ignoreCase = true) }
-    val upcomingEvents = activeEvents.takeLast(5)
+    val ahoraMismoEvents by viewModel.ahoraMismoEvents.collectAsStateWithLifecycle()
+    val proximamenteEvents by viewModel.proximamenteEvents.collectAsStateWithLifecycle()
+    val filteredAhoraMismo = ahoraMismoEvents.filter {
+        it.title.contains(searchQuery, ignoreCase = true)
+    }
+    val filteredProximamente = proximamenteEvents.filter {
+        it.title.contains(searchQuery, ignoreCase = true)
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -115,14 +119,14 @@ fun HomeScreen(
         }
 
         item {
-            if (activeEvents.isEmpty()) {
+            if (filteredAhoraMismo.isEmpty()) {
                 EmptyState()
             } else {
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()).padding(start = 24.dp, bottom = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    activeEvents.take(3).forEach { event ->
+                    filteredAhoraMismo.take(3).forEach { event ->
                         FeaturedEventCard(
                             event = event,
                             modifier = Modifier.width(310.dp),
@@ -138,7 +142,7 @@ fun HomeScreen(
             SectionHeader("Próximamente", "") {}
         }
 
-        items(upcomingEvents) { event ->
+        items(filteredProximamente) { event ->
             UpcomingEventItem(event) { navController.navigate("event_detail/${event.id}") }
         }
 
