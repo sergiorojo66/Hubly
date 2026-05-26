@@ -129,7 +129,9 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = hiltVie
                         label = "Correo electrónico",
                         value = state.email,
                         placeholder = "tu@correo.com",
-                        icon = Icons.Default.Email
+                        icon = Icons.Default.Email,
+                        isError = state.emailError != null,
+                        errorMessage = state.emailError
                     ) { viewModel.onEvent(AuthEvent.EmailChanged(it)) }
 
                     HublyTextField(

@@ -82,9 +82,10 @@ fun RankUpNavGraph() {
         composable(Screen.Main.route) {
             MainScreen(onLogout = {
                 navController.navigate(Screen.Login.route) {
-                    popUpTo(0) { inclusive = true }
+                    popUpTo(navController.graph.id) { inclusive = true }
                     launchSingleTop = true
                 }
+                FirebaseAuth.getInstance().signOut()
             })
         }
     }
