@@ -25,7 +25,7 @@ import com.example.rankup.ui.createEventScreen.CreateEventScreen
 import com.example.rankup.ui.eventDetailScreen.EventDetailScreen
 import com.example.rankup.ui.exploreScreen.ExploreScreen
 import com.example.rankup.ui.homeScreen.HomeScreen
-import com.example.rankup.ui.myEventsScreen.MyEventsScreen // ✨ Importamos tu nueva pantalla
+import com.example.rankup.ui.myEventsScreen.MyEventsScreen
 import com.example.rankup.ui.profileScreen.ProfileScreen
 
 @Composable

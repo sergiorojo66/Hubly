@@ -66,10 +66,19 @@ fun ProfileScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(
                             value = tempName,
-                            onValueChange = { tempName = it },
+                            onValueChange = { if (it.length <= 30) tempName = it },
                             label = { Text("Nombre real") },
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            supportingText = {
+                                Text(
+                                    text = "${tempName.length} / 30",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.End,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Gray
+                                )
+                            }
                         )
                         OutlinedTextField(
                             value = tempBio,
@@ -91,11 +100,18 @@ fun ProfileScreen(
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = {
-                        viewModel.updateProfile(tempName, tempBio)
-                        showDialog = false
-                    }) {
-                        Text("Guardar", fontWeight = FontWeight.Bold)
+                    TextButton(
+                        onClick = {
+                            viewModel.updateProfile(tempName.trim(), tempBio.trim())
+                            showDialog = false
+                        },
+                        enabled = tempName.trim().length in 3..30
+                    ) {
+                        Text(
+                            text = "Guardar",
+                            fontWeight = FontWeight.Bold,
+                            color = if (tempName.trim().length in 3..30) MaterialTheme.colorScheme.primary else Color.Gray
+                        )
                     }
                 },
                 dismissButton = {

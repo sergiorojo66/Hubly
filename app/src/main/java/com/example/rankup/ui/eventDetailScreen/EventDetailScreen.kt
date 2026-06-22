@@ -116,7 +116,7 @@ fun EventDetailScreen(
     var showPasswordDialog by remember { mutableStateOf(false) }
     var passwordInput by remember { mutableStateOf("") }
     val isFinished = event?.isFinished ?: false
-    var showFinishDialog by remember { mutableStateOf(false) } // Nuevo estado
+    var showFinishDialog by remember { mutableStateOf(false) }
     var selectedUser by remember { mutableStateOf<User?>(null) }
     var showParticipantsDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -461,7 +461,7 @@ fun EventHeader(
                             text = {
                                 Text(
                                     "Compartir evento",
-                                    color = Color.Black, // Texto ahora en negro
+                                    color = Color.Black,
                                     fontWeight = FontWeight.Medium
                                 )
                             },

@@ -18,7 +18,6 @@ data class Event(
     val isFinished: Boolean = false,
     val imageUrl: String = "",
     val organizer: String = "",
-    val participants: List<String> = emptyList(),
     val maxParticipants: Int? = null,
     val modules: List<String> = listOf("info"),
     val participantsIds: List<String> = emptyList()

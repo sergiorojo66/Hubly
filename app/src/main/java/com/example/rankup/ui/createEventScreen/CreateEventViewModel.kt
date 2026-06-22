@@ -34,22 +34,27 @@ class CreateEventViewModel @Inject constructor(
         }.timeInMillis
 
     val isFormValid: Boolean
-        get() = state.title.isNotBlank() &&
-                state.location.isNotBlank() &&
-                (!state.isPrivate || state.password.length >= 4) &&
+        get() = state.title.trim().length in 3..40 &&
+                state.location.trim().length in 3..50 &&
+                (!state.isPrivate || state.password.length in 4..16) &&
                 state.date >= todayStartMillis
 
-    fun onTitleChange(newValue: String) { state = state.copy(title = newValue) }
-    fun onDescriptionChange(newValue: String) { state = state.copy(description = newValue) }
-    fun onCategoryChange(newValue: String) { state = state.copy(category = EventCategory.valueOf(newValue)) }
-    fun onLocationChange(newValue: String) { state = state.copy(location = newValue) }
+    fun onTitleChange(newValue: String) {
+        if (newValue.length <= 40) {
+            state = state.copy(title = newValue)
+        }
+    }
 
-    fun onDateChange(newValue: Long) {
-        val isPastDate = newValue < todayStartMillis
-        state = state.copy(
-            date = newValue,
-            error = if (isPastDate) "La fecha no puede ser anterior a la actual" else null
-        )
+    fun onDescriptionChange(newValue: String) {
+        if (newValue.length <= 250) {
+            state = state.copy(description = newValue)
+        }
+    }
+
+    fun onLocationChange(newValue: String) {
+        if (newValue.length <= 50) {
+            state = state.copy(location = newValue)
+        }
     }
 
     fun onMaxParticipantsChange(newValue: String) {
@@ -59,7 +64,24 @@ class CreateEventViewModel @Inject constructor(
             digitsOnly.startsWith("0") -> digitsOnly.dropWhile { it == '0' }
             else -> digitsOnly
         }
-        state = state.copy(maxParticipants = sanitizedValue)
+
+        if (sanitizedValue.length <= 5) {
+            state = state.copy(maxParticipants = sanitizedValue)
+        }
+    }
+
+    fun onPasswordChange(newValue: String) {
+        if (newValue.length <= 16) {
+            state = state.copy(password = newValue)
+        }
+    }
+
+    fun onDateChange(newValue: Long) {
+        val isPastDate = newValue < todayStartMillis
+        state = state.copy(
+            date = newValue,
+            error = if (isPastDate) "La fecha no puede ser anterior a la actual" else null
+        )
     }
 
     fun toggleCategoryMenu(expanded: Boolean) {
@@ -117,8 +139,7 @@ class CreateEventViewModel @Inject constructor(
                     val creatorRanking = RankingUser(
                         id = currentUserId,
                         userName = realName,
-                        points = 0,
-                        level = 1
+                        points = 0
                     )
 
                     FirebaseFirestore.getInstance()
@@ -149,10 +170,6 @@ class CreateEventViewModel @Inject constructor(
             currentModules.add(moduleId)
         }
         state = state.copy(selectedModules = currentModules)
-    }
-
-    fun onPasswordChange(newValue: String) {
-        state = state.copy(password = newValue)
     }
 }
 

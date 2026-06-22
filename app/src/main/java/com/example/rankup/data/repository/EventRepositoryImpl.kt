@@ -77,8 +77,7 @@ class EventRepositoryImpl @Inject constructor(
                 val rankingData = RankingUser(
                     id = userId,
                     userName = userName,
-                    points = 0,
-                    level = 1
+                    points = 0
                 )
 
                 transaction.set(rankingRef, rankingData)

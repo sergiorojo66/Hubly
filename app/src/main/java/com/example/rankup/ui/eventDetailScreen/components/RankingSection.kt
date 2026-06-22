@@ -1,6 +1,6 @@
 package com.example.rankup.ui.eventDetailScreen.components
 
-import androidx.compose.foundation.clickable // ✨ Importante para hacer clicable la fila
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -177,7 +177,6 @@ fun RankingUserRow(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(user.userName.ifEmpty { "Usuario Anónimo" }, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("Nivel ${user.level}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {

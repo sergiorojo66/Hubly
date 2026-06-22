@@ -33,6 +33,7 @@ fun MyEventsScreen(
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Mis eventos", "Mis inscripciones")
     var showFinished by remember { mutableStateOf(false) }
+
     val baseMisEventos = events.filter { it.organizer == currentUserId }
     val baseMisInscripciones = events.filter {
         it.participantsIds.contains(currentUserId) && it.organizer != currentUserId
@@ -151,7 +152,8 @@ fun MyEventsScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 16.dp)
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 val listaOrdenada = listaFiltrada.sortedBy { it.isFinished }
 

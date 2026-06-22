@@ -24,6 +24,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.Color.Companion.Black
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -115,7 +117,16 @@ fun CreateEventScreen(
                     value = state.title,
                     placeholder = "Ej: Torneo de Pádel",
                     onValueChange = { viewModel.onTitleChange(it) },
-                    singleLine = true
+                    singleLine = true,
+                    supportingText = {
+                        Text(
+                            text = "${state.title.length} / 40",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.End,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                    }
                 )
 
                 HublyTextField(
@@ -123,7 +134,16 @@ fun CreateEventScreen(
                     value = state.description,
                     placeholder = "Cuéntanos más...",
                     singleLine = false,
-                    onValueChange = { viewModel.onDescriptionChange(it) }
+                    onValueChange = { viewModel.onDescriptionChange(it) },
+                    supportingText = {
+                        Text(
+                            text = "${state.description.length} / 250",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.End,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                    }
                 )
 
                 CategorySelector(
@@ -137,7 +157,17 @@ fun CreateEventScreen(
                     label = "Ubicación *",
                     value = state.location,
                     placeholder = "Ciudad o lugar",
-                    onValueChange = { viewModel.onLocationChange(it) }
+                    onValueChange = { viewModel.onLocationChange(it) },
+                    singleLine = true,
+                    supportingText = {
+                        Text(
+                            text = "${state.location.length} / 50",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.End,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                    }
                 )
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -145,9 +175,19 @@ fun CreateEventScreen(
                         HublyTextField(
                             label = "Máx. part.",
                             value = state.maxParticipants,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), // Muestra teclado numérico,
-                            placeholder = "Sin limite",
-                            onValueChange = { viewModel.onMaxParticipantsChange(it) }
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            placeholder = "Sin límite",
+                            onValueChange = { viewModel.onMaxParticipantsChange(it) },
+                            singleLine = true,
+                            supportingText = {
+                                Text(
+                                    text = "${state.maxParticipants.length} / 5",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.End,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Gray
+                                )
+                            }
                         )
                     }
                     Box(modifier = Modifier.weight(1f)) {
@@ -198,6 +238,7 @@ fun CreateEventScreen(
                     )
                 }
             }
+
             if (state.isPrivate) {
                 CreateEventCard {
                     Text("Seguridad del evento", fontWeight = FontWeight.Bold, color = Black)
@@ -207,7 +248,16 @@ fun CreateEventScreen(
                         placeholder = "Mínimo 4 caracteres",
                         singleLine = true,
                         onValueChange = { viewModel.onPasswordChange(it) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        supportingText = {
+                            Text(
+                                text = "${state.password.length} / 16",
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.End,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Gray
+                            )
+                        }
                     )
                     Text(
                         "Los usuarios deberán introducirla para unirse.",
@@ -283,7 +333,6 @@ fun CreateEventScreen(
                     )
                 }
             }
-
         }
     }
 }

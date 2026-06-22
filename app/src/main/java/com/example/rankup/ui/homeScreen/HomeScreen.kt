@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,7 +67,7 @@ fun HomeScreen(
                         .align(Alignment.BottomCenter)
                         .padding(horizontal = 24.dp)
                         .fillMaxWidth()
-                        .height(50.dp), // Un poco más fina
+                        .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(6.dp)
                 ) {
@@ -143,7 +144,12 @@ fun HomeScreen(
         }
 
         items(filteredProximamente) { event ->
-            UpcomingEventItem(event) { navController.navigate("event_detail/${event.id}") }
+            UpcomingEventItem(
+                event = event,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+            ) {
+                navController.navigate("event_detail/${event.id}")
+            }
         }
 
         item { Spacer(modifier = Modifier.height(20.dp)) }
@@ -174,27 +180,71 @@ fun SectionHeader(title: String, actionText: String, onAction: () -> Unit) {
 }
 
 @Composable
-fun UpcomingEventItem(event: Event, onClick: () -> Unit) {
+fun UpcomingEventItem(
+    event: Event,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(16.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(
-                modifier = Modifier.size(50.dp).background(Color(0xFFF3E5F5), RoundedCornerShape(12.dp)),
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color(0xFFF3E5F5), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = Color(0xFF6200EE))
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Fecha del evento",
+                    tint = Color(0xFF6200EE)
+                )
             }
+
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(event.title, fontWeight = FontWeight.Bold, maxLines = 1, color = Color.Black)
-                Row{
-                    Text(event.location, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    Text(", ${formatDate(event.date)}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                }
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = event.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = event.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Text(
+                text = formatDate(event.date),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.align(Alignment.Bottom),
+                maxLines = 1
+            )
         }
     }
 }

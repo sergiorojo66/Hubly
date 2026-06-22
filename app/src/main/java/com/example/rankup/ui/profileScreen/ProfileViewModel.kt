@@ -47,20 +47,28 @@ class ProfileViewModel @Inject constructor(
 
     fun updateProfile(newName: String, newBio: String) {
         val uid = auth.currentUser?.uid ?: return
-        val newInitials = if (newName.isNotBlank()) newName.take(1).uppercase() else "U"
+
+        val cleanName = newName.trim()
+
+        if (cleanName.length !in 3..30) {
+            println("Error: El nombre debe tener entre 3 y 30 caracteres")
+            return
+        }
+
+        val newInitials = cleanName.take(1).uppercase()
 
         viewModelScope.launch {
             try {
                 firestore.collection("users").document(uid)
                     .update(
-                        "displayName", newName,
-                        "bio", newBio,
+                        "displayName", cleanName,
+                        "bio", newBio.trim(),
                         "initials", newInitials
                     ).await()
 
                 userState = userState?.copy(
-                    displayName = newName,
-                    bio = newBio,
+                    displayName = cleanName,
+                    bio = newBio.trim(),
                     initials = newInitials
                 )
             } catch (e: Exception) {

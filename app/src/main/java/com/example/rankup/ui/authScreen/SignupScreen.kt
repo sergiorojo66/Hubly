@@ -129,7 +129,7 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = hiltVi
                         value = state.email,
                         placeholder = "tu@correo.com",
                         icon = Icons.Default.Email,
-                        isError = state.emailError != null, // Se activa si hay mensaje
+                        isError = state.emailError != null,
                         errorMessage = state.emailError,
                         onValueChange = { viewModel.onEvent(AuthEvent.EmailChanged(it)) }
                     )

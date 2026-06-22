@@ -38,6 +38,7 @@ fun HublyTextField(
     readOnly: Boolean = false,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     onPasswordToggleClick: () -> Unit = {},
+    supportingText: @Composable (() -> Unit)? = null,
     onValueChange: (String) -> Unit
 ) {
     Column(modifier = modifier) {
@@ -80,7 +81,7 @@ fun HublyTextField(
             },
             colors = TextFieldDefaults.colors(
                 focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black, // Cambiado de DarkGray a Black para mejor lectura
+                unfocusedTextColor = Color.Black,
                 focusedContainerColor = Color(0xFFF3F4F6),
                 unfocusedContainerColor = Color(0xFFF3F4F6),
                 focusedIndicatorColor = Color.Transparent,
@@ -93,6 +94,7 @@ fun HublyTextField(
             visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
             singleLine = singleLine,
             maxLines = if (singleLine) 1 else 10,
+            supportingText = supportingText
         )
 
         if (isError && errorMessage != null) {
