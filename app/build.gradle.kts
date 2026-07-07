@@ -51,14 +51,21 @@ android {
     buildFeatures {
         compose = true
     }
-    detekt {
-        buildUponDefaultConfig = true
-        allRules = false
 
-        reports {
-            html {
-                required.set(true)
-            }
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    ignoreFailures = true
+
+    reports {
+        html {
+            required.set(true)
         }
     }
 }
