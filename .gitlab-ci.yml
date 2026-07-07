@@ -53,6 +53,10 @@ unit-test-job:
   stage: test
   script:
     - ./gradlew testDebugUnitTest
+  artifacts:
+    when: always
+    reports:
+      junit: app/build/test-results/testDebugUnitTest/*.xml
   only:
     - master
     - develop
