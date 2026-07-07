@@ -6,6 +6,7 @@ plugins {
 
     id("com.google.dagger.hilt.android")
     id("kotlin-kapt")
+    id("io.gitlab.arturbosch.detekt")
 }
 
 android {
@@ -49,6 +50,16 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    detekt {
+        buildUponDefaultConfig = true
+        allRules = false
+
+        reports {
+            html {
+                required.set(true)
+            }
+        }
     }
 }
 
