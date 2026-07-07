@@ -87,6 +87,7 @@ dependencies {
     implementation(libs.firebase.messaging)
     implementation("com.google.auth:google-auth-library-oauth2-http:1.23.0")
     testImplementation(libs.junit)
+    testImplementation("io.mockk:mockk:1.13.12")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
