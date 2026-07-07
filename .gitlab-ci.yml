@@ -1,4 +1,4 @@
-image: ghcr.io/cirruslabs/android-sdk:34
+image: ghcr.io/cirruslabs/android-sdk:36
 
 variables:
   GRADLE_OPTS: "-Dorg.gradle.daemon=false"
@@ -17,27 +17,30 @@ cache:
 
 before_script:
   - chmod +x ./gradlew
-  # - cp "$GOOGLE_SERVICES_JSON" app/google-services.json
+  - cp "$GOOGLE_SERVICES_JSON" app/google-services.json
 
-# --- TRABAJO 1: LINT DE ANDROID ---
 lint-job:
   stage: lint
   script:
     - ./gradlew lintDebug
+  artifacts:
+    name: "RankUp-Reporte-Lint"
+    when: always
+    paths:
+      - app/build/reports/lint-results-debug.html
+    expire_in: 1 week
   only:
     - master
     - develop
     - merge_requests
 
-# --- NUEVO TRABAJO: ANÁLISIS DE CALIDAD CON DETEKT ---
 detekt-job:
-  stage: lint # Se ejecuta en la misma fase de análisis
+  stage: lint 
   script:
     - ./gradlew detekt
-  # Guardamos el reporte HTML generado para poder descargarlo desde GitLab
   artifacts:
-    name: "Hubly-Reporte-Calidad-Código"
-    when: always # Se guarda tanto si encuentra fallos como si no
+    name: "RankUp-Reporte-Calidad-Código"
+    when: always 
     paths:
       - app/build/reports/detekt/detekt.html
     expire_in: 1 week
@@ -46,7 +49,6 @@ detekt-job:
     - develop
     - merge_requests
 
-# --- TRABAJO 3: TESTS UNITARIOS ---
 unit-test-job:
   stage: test
   script:
@@ -56,13 +58,12 @@ unit-test-job:
     - develop
     - merge_requests
 
-# --- TRABAJO 4: DESPLIEGUE A FIREBASE ---
 deploy-to-firebase-job:
   stage: deploy
   script:
     - ./gradlew assembleDebug appDistributionUploadDebug
   artifacts:
-    name: "Hubly-Debug-APK-${CI_COMMIT_SHORT_SHA}"
+    name: "RankUp-Debug-APK-${CI_COMMIT_SHORT_SHA}"
     paths:
       - app/build/outputs/apk/debug/app-debug.apk
     expire_in: 1 week
