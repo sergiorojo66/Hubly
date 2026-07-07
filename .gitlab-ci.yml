@@ -24,7 +24,7 @@ lint-job:
   script:
     - ./gradlew lintDebug
   only:
-    - main
+    - master
     - develop
     - merge_requests
 
@@ -33,7 +33,7 @@ unit-test-job:
   script:
     - ./gradlew testDebugUnitTest
   only:
-    - main
+    - master
     - develop
     - merge_requests
 
@@ -47,5 +47,5 @@ build-job:
       - app/build/outputs/apk/debug/app-debug.apk
     expire_in: 1 week 
   only:
-    - main
+    - master
     - develop
