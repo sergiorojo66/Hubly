@@ -1,3 +1,12 @@
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(localPropertiesFile.inputStream())
+    }
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -23,6 +32,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val googleServerClientId = localProperties.getProperty("GOOGLE_SERVER_CLIENT_ID")
+            ?: "301672827415-qcrg3hlki9lv6350227vcs1jm8fmk1ma.apps.googleusercontent.com"
+        buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
     }
 
     packaging {
@@ -50,6 +63,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     lint {
@@ -75,6 +89,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-functions")
     implementation("com.google.android.gms:play-services-auth:21.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation(libs.androidx.core.ktx)
@@ -103,7 +118,6 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.2.2")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation(libs.firebase.messaging)
-    implementation("com.google.auth:google-auth-library-oauth2-http:1.23.0")
     testImplementation(libs.junit)
     testImplementation("io.mockk:mockk:1.13.12")
     androidTestImplementation(libs.androidx.junit)

@@ -26,6 +26,11 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun signUpWithEmail(email: String, pass: String): Result<AuthResult> {
         return try {
             val result = firebaseAuth.createUserWithEmailAndPassword(email, pass).await()
+            try {
+                result.user?.sendEmailVerification()?.await()
+            } catch (e: Exception) {
+                // No bloqueamos el registro si falla el envío del correo de verificación.
+            }
             Result.success(result)
         } catch (e: Exception) {
             Result.failure(e)
@@ -41,6 +46,15 @@ class AuthRepositoryImpl @Inject constructor(
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             val result = firebaseAuth.signInWithCredential(credential).await()
             Result.success(result)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        return try {
+            firebaseAuth.sendPasswordResetEmail(email).await()
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }

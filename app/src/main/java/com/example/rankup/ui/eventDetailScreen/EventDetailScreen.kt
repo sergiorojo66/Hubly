@@ -115,6 +115,7 @@ fun EventDetailScreen(
     val organizerName by viewModel.organizerName.collectAsState()
     var showPasswordDialog by remember { mutableStateOf(false) }
     var passwordInput by remember { mutableStateOf("") }
+    var isValidatingPassword by remember { mutableStateOf(false) }
     val isFinished = event?.isFinished ?: false
     var showFinishDialog by remember { mutableStateOf(false) }
     var selectedUser by remember { mutableStateOf<User?>(null) }
@@ -302,7 +303,7 @@ fun EventDetailScreen(
             }
             if (showPasswordDialog) {
                 AlertDialog(
-                    onDismissRequest = { showPasswordDialog = false },
+                    onDismissRequest = { if (!isValidatingPassword) showPasswordDialog = false },
                     title = { Text("Evento Privado") },
                     text = {
                         Column {
@@ -313,24 +314,39 @@ fun EventDetailScreen(
                                 onValueChange = { passwordInput = it },
                                 label = { Text("Contraseña") },
                                 singleLine = true,
+                                enabled = !isValidatingPassword,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
                     },
                     confirmButton = {
-                        TextButton(onClick = {
-                            if (passwordInput == event?.password) {
-                                showPasswordDialog = false
-                                event?.let { viewModel.joinEvent(it.id) }
-                            } else {
-                                Toast.makeText(context, "Contraseña incorrecta", Toast.LENGTH_SHORT).show()
+                        TextButton(
+                            enabled = !isValidatingPassword,
+                            onClick = {
+                                val currentEvent = event ?: return@TextButton
+                                isValidatingPassword = true
+                                // La contraseña se valida en el servidor (Cloud Function
+                                // joinPrivateEvent): el cliente nunca decide si es correcta.
+                                viewModel.joinPrivateEvent(currentEvent.id, passwordInput) { success ->
+                                    isValidatingPassword = false
+                                    if (success) {
+                                        showPasswordDialog = false
+                                        passwordInput = ""
+                                    } else {
+                                        Toast.makeText(context, "Contraseña incorrecta", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             }
-                        }) {
-                            Text("Validar y Unirme", fontWeight = FontWeight.Bold)
+                        ) {
+                            if (isValidatingPassword) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text("Validar y Unirme", fontWeight = FontWeight.Bold)
+                            }
                         }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showPasswordDialog = false }) {
+                        TextButton(enabled = !isValidatingPassword, onClick = { showPasswordDialog = false }) {
                             Text("Cancelar")
                         }
                     }
@@ -930,9 +946,9 @@ fun EditEventDialog(
                     if (viewModel.editIsPrivate) {
                         Spacer(modifier = Modifier.height(12.dp))
                         HublyTextField(
-                            label = "Contraseña de acceso *",
+                            label = if (event?.isPrivate == true) "Nueva contraseña (opcional)" else "Contraseña de acceso *",
                             value = viewModel.editPassword,
-                            placeholder = "Mínimo 4 caracteres",
+                            placeholder = if (event?.isPrivate == true) "Déjalo en blanco para no cambiarla" else "Mínimo 4 caracteres",
                             singleLine = true,
                             onValueChange = { viewModel.editPassword = it },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)

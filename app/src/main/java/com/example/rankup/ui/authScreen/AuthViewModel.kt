@@ -12,6 +12,7 @@ import com.example.rankup.domain.model.AuthEvent
 import com.example.rankup.domain.model.AuthState
 import com.example.rankup.domain.model.User
 import com.example.rankup.domain.repository.AuthRepository
+import com.example.rankup.util.AppLogger
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
@@ -47,8 +48,34 @@ class AuthViewModel @Inject constructor(
             is AuthEvent.GoogleSignInClicked -> performGoogleSignIn(event.context)
             AuthEvent.LoginClicked -> { validateAndLogin() }
             is AuthEvent.Logout -> performLogout()
+            is AuthEvent.ForgotPasswordClicked -> performPasswordReset(event.email)
             else -> {}
         }
+    }
+
+    private fun performPasswordReset(email: String) {
+        val isEmailValid = android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+        if (!isEmailValid) {
+            state = state.copy(emailError = "Introduce un correo válido para recuperar tu contraseña")
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, error = null, emailError = null)
+            val result = authRepository.sendPasswordResetEmail(email)
+            result.onSuccess {
+                state = state.copy(isLoading = false, resetEmailSent = true)
+            }.onFailure { e ->
+                AppLogger.e("AuthViewModel", "Error al enviar correo de recuperación", e)
+                state = state.copy(isLoading = false, resetEmailSent = true)
+            }
+        }
+    }
+
+    private fun isPasswordStrongEnough(password: String): Boolean {
+        if (password.length < 8) return false
+        val hasLetter = password.any { it.isLetter() }
+        val hasDigit = password.any { it.isDigit() }
+        return hasLetter && hasDigit
     }
 
     private fun performSignUp() {
@@ -58,14 +85,14 @@ class AuthViewModel @Inject constructor(
             passwordError = null
         )
         val isEmailValid = android.util.Patterns.EMAIL_ADDRESS.matcher(state.email).matches()
-        val isPasswordShort = state.password.length < 6
+        val isPasswordWeak = !isPasswordStrongEnough(state.password)
         val passwordsMatch = state.password == state.confirmPassword
 
-        if (!isEmailValid || isPasswordShort || !passwordsMatch) {
+        if (!isEmailValid || isPasswordWeak || !passwordsMatch) {
             state = state.copy(
                 emailError = if (!isEmailValid) "Formato de correo inválido" else null,
                 passwordError = when {
-                    isPasswordShort -> "Mínimo 6 caracteres"
+                    isPasswordWeak -> "Mínimo 8 caracteres, con al menos una letra y un número"
                     !passwordsMatch -> "Las contraseñas no coinciden"
                     else -> null
                 }
@@ -123,7 +150,7 @@ class AuthViewModel @Inject constructor(
             val credentialManager = CredentialManager.create(context)
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
-                .setServerClientId("301672827415-qcrg3hlki9lv6350227vcs1jm8fmk1ma.apps.googleusercontent.com")
+                .setServerClientId(com.example.rankup.BuildConfig.GOOGLE_SERVER_CLIENT_ID)
                 .build()
 
             val request = GetCredentialRequest.Builder().addCredentialOption(googleIdOption).build()
@@ -168,7 +195,7 @@ class AuthViewModel @Inject constructor(
             val fcmToken = try {
                 FirebaseMessaging.getInstance().token.await()
             } catch (e: Exception) {
-                println("Error al obtener FCM Token: ${e.message}")
+                AppLogger.e("AuthViewModel", "Error al obtener FCM Token", e)
                 null
             }
 
@@ -193,7 +220,7 @@ class AuthViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            println("Error al crear perfil o registrar token: ${e.message}")
+            AppLogger.e("AuthViewModel", "Error al crear perfil o registrar token", e)
         }
     }
 }

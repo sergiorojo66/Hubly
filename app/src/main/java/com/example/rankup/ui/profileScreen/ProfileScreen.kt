@@ -44,6 +44,7 @@ fun ProfileScreen(
     var tempName by remember { mutableStateOf("") }
     var tempBio by remember { mutableStateOf("") }
     val eventHistory by viewModel.eventHistory.collectAsState()
+    val profileError by viewModel.error.collectAsState()
     var showHistoryDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var notificationsSilenced by remember { mutableStateOf(false) }
@@ -60,10 +61,17 @@ fun ProfileScreen(
     } else {
         if (showDialog) {
             AlertDialog(
-                onDismissRequest = { showDialog = false },
+                onDismissRequest = { showDialog = false; viewModel.clearError() },
                 title = { Text("Editar Perfil", fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (profileError != null) {
+                            Text(
+                                text = profileError ?: "",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                         OutlinedTextField(
                             value = tempName,
                             onValueChange = { if (it.length <= 30) tempName = it },

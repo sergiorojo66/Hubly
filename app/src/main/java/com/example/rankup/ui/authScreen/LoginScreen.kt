@@ -107,6 +107,21 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = hiltVie
             ) {
                 Column(modifier = Modifier.padding(32.dp)) {
                     Text("Iniciar sesión", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    if (state.resetEmailSent) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                            color = Color(0xFFE8F5E9),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                "Si ese correo está registrado, te hemos enviado un enlace para restablecer tu contraseña.",
+                                color = Color(0xFF2E7D32),
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(12.dp),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                     if (state.error != null) {
                         Surface(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -146,6 +161,15 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = hiltVie
                         errorMessage = state.passwordError,
                         onValueChange = { viewModel.onEvent(AuthEvent.PasswordChanged(it)) }
                     )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { viewModel.onEvent(AuthEvent.ForgotPasswordClicked(state.email)) }) {
+                            Text("¿Olvidaste tu contraseña?", color = Color(0xFF6D31FF), fontSize = 13.sp)
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 

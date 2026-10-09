@@ -1,6 +1,6 @@
 package com.example.rankup.data.repository
 
-import android.util.Log
+import com.example.rankup.util.AppLogger
 import com.example.rankup.domain.model.ChatMessage
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.model.RankingUser
@@ -23,7 +23,7 @@ class EventRepositoryImpl @Inject constructor(
     override fun getEvents(): Flow<List<Event>> = callbackFlow {
         val subscription = eventCollection.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                Log.e("Firestore", "Error de permisos (esperado en logout): ${error.message}")
+                AppLogger.e("Firestore", "Error de permisos (esperado en logout)", error)
                 return@addSnapshotListener
             }
 
@@ -39,7 +39,7 @@ class EventRepositoryImpl @Inject constructor(
         val docRef = firestore.collection("events").document(eventId)
         val subscription = docRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                Log.e("Firestore", "Ignorando error de permisos al cerrar sesión en getEventById")
+                AppLogger.e("Firestore", "Ignorando error de permisos al cerrar sesión en getEventById")
                 return@addSnapshotListener
             }
             val event = snapshot?.toObject(Event::class.java)
@@ -51,8 +51,18 @@ class EventRepositoryImpl @Inject constructor(
     override suspend fun createEvent(event: Event): Result<String> {
         return try {
             val newDocumentRef = eventCollection.document()
-            val eventWithId = event.copy(id = newDocumentRef.id)
+            // La contraseña NUNCA se escribe en el documento público del evento:
+            // ese documento lo puede leer cualquier usuario autenticado. Se guarda
+            // aparte, en una subcolección que las reglas de Firestore no exponen
+            // al cliente (solo la lee la Cloud Function joinPrivateEvent vía Admin SDK).
+            val eventWithId = event.copy(id = newDocumentRef.id, password = "")
             newDocumentRef.set(eventWithId).await()
+
+            if (event.isPrivate && event.password.isNotBlank()) {
+                newDocumentRef.collection("private").document("config")
+                    .set(mapOf("password" to event.password)).await()
+            }
+
             Result.success(newDocumentRef.id)
         } catch (e: Exception) {
             Result.failure(e)
@@ -119,7 +129,7 @@ class EventRepositoryImpl @Inject constructor(
 
             newDocRef.set(messageWithId).await()
         } catch (e: Exception) {
-            Log.e("Repository", "Error enviando mensaje: ${e.message}")
+            AppLogger.e("Repository", "Error enviando mensaje", e)
             throw e
         }
     }
@@ -172,7 +182,7 @@ class EventRepositoryImpl @Inject constructor(
             .whereArrayContains("participantsIds", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("Firestore", "Error cargando historial: ${error.message}")
+                    AppLogger.e("Firestore", "Error cargando historial", error)
                     return@addSnapshotListener
                 }
 
@@ -187,10 +197,18 @@ class EventRepositoryImpl @Inject constructor(
 
     override suspend fun updateEvent(event: Event): Result<Unit> {
         return try {
-            firestore.collection("events")
-                .document(event.id)
-                .set(event)
-                .await()
+            val eventRef = firestore.collection("events").document(event.id)
+
+            // Igual que en createEvent: la contraseña no viaja en el documento
+            // público. Si el campo viene en blanco, entendemos que el organizador
+            // no quiere cambiarla y dejamos intacta la que ya hubiera guardada.
+            eventRef.set(event.copy(password = "")).await()
+
+            if (event.isPrivate && event.password.isNotBlank()) {
+                eventRef.collection("private").document("config")
+                    .set(mapOf("password" to event.password)).await()
+            }
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

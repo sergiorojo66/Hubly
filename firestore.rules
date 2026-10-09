@@ -1,0 +1,76 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId);
+
+      allow update: if isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['rating']);
+
+      allow update: if isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating']) &&
+        request.resource.data.rating is number;
+
+      match /ratings/{voterId} {
+        allow read: if isSignedIn();
+        allow write: if isOwner(voterId) &&
+          request.resource.data.score is number &&
+          request.resource.data.score >= 0 &&
+          request.resource.data.score <= 5;
+      }
+    }
+
+    match /events/{eventId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn() &&
+        request.resource.data.organizer == request.auth.uid;
+
+      allow update: if isSignedIn() && (
+        request.auth.uid == resource.data.organizer ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantsIds'])
+      );
+
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.organizer;
+
+      // Contraseña del evento (si es privado). Nunca legible desde el
+      // cliente -- ni siquiera por el organizador -- para que no pueda
+      // filtrarse por una consulta directa a Firestore. Solo la lee la
+      // Cloud Function joinPrivateEvent, que usa el Admin SDK y por tanto
+      // no está sujeta a estas reglas. El organizador puede escribirla
+      // (crear/cambiar la contraseña) pero no leerla de vuelta.
+      match /private/{docId} {
+        allow read: if false;
+        allow write: if isSignedIn() &&
+          request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.organizer;
+      }
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.resource.data.message is string &&
+          request.resource.data.message.size() > 0 &&
+          request.resource.data.message.size() <= 1000;
+        allow update, delete: if false;
+      }
+
+      match /rankings/{userId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantsIds;
+      }
+    }
+  }
+}

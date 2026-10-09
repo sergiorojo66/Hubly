@@ -9,7 +9,8 @@ data class AuthState(
     val confirmPassword: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isSuccess: Boolean = false
+    val isSuccess: Boolean = false,
+    val resetEmailSent: Boolean = false
 )
 
 sealed class AuthEvent {
@@ -21,4 +22,5 @@ sealed class AuthEvent {
     data class GoogleSignInClicked(val context: android.content.Context) : AuthEvent()
     object LoginClicked : AuthEvent()
     object Logout : AuthEvent()
+    data class ForgotPasswordClicked(val email: String) : AuthEvent()
 }

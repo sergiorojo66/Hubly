@@ -6,7 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rankup.data.network.FcmSender.enviarNotificacionPush
+import com.example.rankup.data.network.CloudFunctionsClient
+import com.example.rankup.util.AppLogger
 import com.example.rankup.domain.model.ChatMessage
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.model.RankingUser
@@ -140,6 +141,27 @@ class EventDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Unirse a un evento PRIVADO. A diferencia de joinEvent (para eventos
+     * públicos), esto pasa por la Cloud Function joinPrivateEvent: la
+     * contraseña se valida en el servidor y nunca se compara en el cliente.
+     * onResult(true) = unido correctamente; onResult(false) = contraseña
+     * incorrecta u otro fallo (el mensaje ya queda en _error).
+     */
+    fun joinPrivateEvent(eventId: String, password: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val result = CloudFunctionsClient.joinPrivateEvent(eventId, password)
+            result.onSuccess {
+                _error.value = null
+                loadRankings(eventId)
+                onResult(true)
+            }.onFailure { error ->
+                _error.value = error.message ?: "No se pudo unir al evento"
+                onResult(false)
+            }
+        }
+    }
+
     fun loadChatMessages(eventId: String) {
         viewModelScope.launch {
             repository.getChatMessages(eventId).collect { msgs ->
@@ -149,6 +171,13 @@ class EventDetailViewModel @Inject constructor(
     }
 
     fun sendMessage(text: String) {
+        val cleanText = text.trim()
+        if (cleanText.isEmpty()) return
+        if (cleanText.length > 1000) {
+            _error.value = "El mensaje es demasiado largo (máximo 1000 caracteres)"
+            return
+        }
+
         val eventCurrent = _event.value ?: return
         val eventId = eventCurrent.id
         val userUid = auth.currentUser?.uid ?: return
@@ -162,36 +191,20 @@ class EventDetailViewModel @Inject constructor(
                 val newMessage = ChatMessage(
                     senderId = userUid,
                     senderName = senderName,
-                    message = text,
+                    message = cleanText,
                     timestamp = java.util.Date()
                 )
 
                 repository.sendMessage(eventId, newMessage)
 
-                val idsANotificar = eventCurrent.participantsIds.filter { it != userUid }
-
-                if (idsANotificar.isNotEmpty()) {
-                    val tokensList = mutableListOf<String>()
-
-                    for (id in idsANotificar) {
-                        val doc = firestore.collection("users").document(id).get().await()
-                        val token = doc.getString("fcmToken")
-                        if (!token.isNullOrBlank()) {
-                            tokensList.add(token)
-                        }
-                    }
-
-                    if (tokensList.isNotEmpty()) {
-                        enviarNotificacionPush(
-                            context = context,
-                            tokensParticipantes = tokensList,
-                            titulo = "Chat: ${eventCurrent.title}",
-                            mensaje = "$senderName: $text"
-                        )
-                    }
-                }
+                CloudFunctionsClient.notifyEvent(
+                    eventId = eventId,
+                    title = "Chat: ${eventCurrent.title}",
+                    body = "$senderName: $cleanText"
+                )
             } catch (e: Exception) {
-                _error.value = "Error al enviar mensaje o notificación"
+                AppLogger.e("EventDetailViewModel", "Error al enviar mensaje", e)
+                _error.value = "Error al enviar mensaje"
             }
         }
     }
@@ -273,30 +286,13 @@ class EventDetailViewModel @Inject constructor(
 
                 viewModelScope.launch {
                     try {
-                        val idsANotificar = eventCurrent.participantsIds.filter { it != userUid }
-
-                        if (idsANotificar.isNotEmpty()) {
-                            val tokensList = mutableListOf<String>()
-
-                            for (id in idsANotificar) {
-                                val doc = firestore.collection("users").document(id).get().await()
-                                val token = doc.getString("fcmToken")
-                                if (!token.isNullOrBlank()) {
-                                    tokensList.add(token)
-                                }
-                            }
-
-                            if (tokensList.isNotEmpty()) {
-                                enviarNotificacionPush(
-                                    context = context,
-                                    tokensParticipantes = tokensList,
-                                    titulo = "🏁 ¡Evento Finalizado!",
-                                    mensaje = "El evento '${eventCurrent.title}' ha terminado. ¡Entra para ver los resultados y el ranking final!"
-                                )
-                            }
-                        }
+                        CloudFunctionsClient.notifyEvent(
+                            eventId = eventId,
+                            title = "🏁 ¡Evento Finalizado!",
+                            body = "El evento '${eventCurrent.title}' ha terminado. ¡Entra para ver los resultados y el ranking final!"
+                        )
                     } catch (e: Exception) {
-                        android.util.Log.e("NotificationFinish", "Error al enviar push de finalización", e)
+                        AppLogger.e("NotificationFinish", "Error al enviar push de finalización", e)
                     }
                 }
 
@@ -361,9 +357,21 @@ class EventDetailViewModel @Inject constructor(
             return false
         }
 
-        if (editIsPrivate && editPassword.length < 4) {
-            onError("La contraseña debe tener al menos 4 caracteres.")
-            return false
+        if (editIsPrivate) {
+            // El campo llega vacío al editar un evento que YA era privado (la
+            // contraseña real vive en una subcolección no legible desde el
+            // cliente): en blanco significa "no cambiar la contraseña actual".
+            // Si el evento pasa de público a privado ahora, sí es obligatoria.
+            val wasAlreadyPrivate = currentEvent.isPrivate
+            if (editPassword.isBlank()) {
+                if (!wasAlreadyPrivate) {
+                    onError("Introduce una contraseña para el evento privado.")
+                    return false
+                }
+            } else if (editPassword.length !in 4..16) {
+                onError("La contraseña debe tener entre 4 y 16 caracteres.")
+                return false
+            }
         }
 
         return true
@@ -403,29 +411,13 @@ class EventDetailViewModel @Inject constructor(
 
                 viewModelScope.launch {
                     try {
-                        val idsANotificar = currentEvent.participantsIds.filter { it != userUid }
-                        if (idsANotificar.isNotEmpty()) {
-                            val tokensList = mutableListOf<String>()
-
-                            for (id in idsANotificar) {
-                                val doc = firestore.collection("users").document(id).get().await()
-                                val token = doc.getString("fcmToken")
-                                if (!token.isNullOrBlank()) {
-                                    tokensList.add(token)
-                                }
-                            }
-
-                            if (tokensList.isNotEmpty()) {
-                                enviarNotificacionPush(
-                                    context = context,
-                                    tokensParticipantes = tokensList,
-                                    titulo = "¡Evento actualizado!",
-                                    mensaje = "El evento '$editTitle' ha sido modificado por el organizador."
-                                )
-                            }
-                        }
+                        CloudFunctionsClient.notifyEvent(
+                            eventId = eventId,
+                            title = "¡Evento actualizado!",
+                            body = "El evento '$editTitle' ha sido modificado por el organizador."
+                        )
                     } catch (e: Exception) {
-                        android.util.Log.e("NotificationUpdate", "Error enviando push de actualización", e)
+                        AppLogger.e("NotificationUpdate", "Error enviando push de actualización", e)
                     }
                 }
 

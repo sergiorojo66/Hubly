@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.model.User
 import com.example.rankup.domain.repository.EventRepository
+import com.example.rankup.util.AppLogger
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,8 +31,15 @@ class ProfileViewModel @Inject constructor(
     private val _eventHistory = MutableStateFlow<List<Event>>(emptyList())
     val eventHistory = _eventHistory.asStateFlow()
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error = _error.asStateFlow()
+
     init {
         fetchUserProfile()
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 
     private fun fetchUserProfile() {
@@ -41,17 +49,18 @@ class ProfileViewModel @Inject constructor(
                 val snapshot = firestore.collection("users").document(uid).get().await()
                 userState = snapshot.toObject(User::class.java)
             } catch (e: Exception) {
+                AppLogger.e("ProfileViewModel", "Error al cargar perfil", e)
+                _error.value = "No se pudo cargar tu perfil. Comprueba tu conexión e inténtalo de nuevo."
             }
         }
     }
 
     fun updateProfile(newName: String, newBio: String) {
         val uid = auth.currentUser?.uid ?: return
-
         val cleanName = newName.trim()
 
         if (cleanName.length !in 3..30) {
-            println("Error: El nombre debe tener entre 3 y 30 caracteres")
+            _error.value = "El nombre debe tener entre 3 y 30 caracteres"
             return
         }
 
@@ -71,8 +80,10 @@ class ProfileViewModel @Inject constructor(
                     bio = newBio.trim(),
                     initials = newInitials
                 )
+                _error.value = null
             } catch (e: Exception) {
-                println("Error al actualizar perfil: ${e.message}")
+                AppLogger.e("ProfileViewModel", "Error al actualizar perfil", e)
+                _error.value = "No se pudo actualizar tu perfil. Inténtalo de nuevo."
             }
         }
     }
@@ -84,7 +95,8 @@ class ProfileViewModel @Inject constructor(
                     _eventHistory.value = events
                 }
             } catch (e: Exception) {
-                println("Error al cargar historial de eventos: ${e.message}")
+                AppLogger.e("ProfileViewModel", "Error al cargar historial de eventos", e)
+                _error.value = "No se pudo cargar tu historial de eventos."
             }
         }
     }
