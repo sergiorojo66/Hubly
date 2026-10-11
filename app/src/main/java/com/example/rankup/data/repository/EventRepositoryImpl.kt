@@ -5,6 +5,7 @@ import com.example.rankup.domain.model.ChatMessage
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.model.RankingUser
 import com.example.rankup.domain.repository.EventRepository
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -15,15 +16,29 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class EventRepositoryImpl @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth
 ) : EventRepository {
 
     private val eventCollection = firestore.collection("events")
 
+    /**
+     * Cuando se cierra sesión, los listeners de Firestore en vuelo suelen
+     * disparar un error de permisos antes de desuscribirse: es esperado y
+     * no debe mostrarse como un fallo real. Lo distinguimos comprobando si
+     * ya no hay usuario autenticado en ese momento.
+     */
+    private fun isExpectedSignOutError(): Boolean = auth.currentUser == null
+
     override fun getEvents(): Flow<List<Event>> = callbackFlow {
         val subscription = eventCollection.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                AppLogger.e("Firestore", "Error de permisos (esperado en logout)", error)
+                if (isExpectedSignOutError()) {
+                    AppLogger.e("Firestore", "Error de permisos (esperado en logout)", error)
+                } else {
+                    AppLogger.e("Firestore", "Error real cargando eventos", error)
+                    close(error)
+                }
                 return@addSnapshotListener
             }
 
@@ -39,7 +54,12 @@ class EventRepositoryImpl @Inject constructor(
         val docRef = firestore.collection("events").document(eventId)
         val subscription = docRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                AppLogger.e("Firestore", "Ignorando error de permisos al cerrar sesión en getEventById")
+                if (isExpectedSignOutError()) {
+                    AppLogger.e("Firestore", "Ignorando error de permisos al cerrar sesión en getEventById")
+                } else {
+                    AppLogger.e("Firestore", "Error real cargando el evento $eventId", error)
+                    close(error)
+                }
                 return@addSnapshotListener
             }
             val event = snapshot?.toObject(Event::class.java)
@@ -106,7 +126,13 @@ class EventRepositoryImpl @Inject constructor(
             .collection("messages")
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    if (!isExpectedSignOutError()) {
+                        AppLogger.e("Firestore", "Error real cargando mensajes del chat", error)
+                        close(error)
+                    }
+                    return@addSnapshotListener
+                }
 
                 val msgs = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject(ChatMessage::class.java)?.copy(id = doc.id)
@@ -182,7 +208,12 @@ class EventRepositoryImpl @Inject constructor(
             .whereArrayContains("participantsIds", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    AppLogger.e("Firestore", "Error cargando historial", error)
+                    if (isExpectedSignOutError()) {
+                        AppLogger.e("Firestore", "Error de permisos (esperado en logout) en historial", error)
+                    } else {
+                        AppLogger.e("Firestore", "Error real cargando historial", error)
+                        close(error)
+                    }
                     return@addSnapshotListener
                 }
 

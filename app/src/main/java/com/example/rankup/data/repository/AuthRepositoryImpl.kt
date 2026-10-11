@@ -1,6 +1,7 @@
 package com.example.rankup.data.repository
 
 import com.example.rankup.domain.repository.AuthRepository
+import com.example.rankup.util.AppLogger
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -29,7 +30,9 @@ class AuthRepositoryImpl @Inject constructor(
             try {
                 result.user?.sendEmailVerification()?.await()
             } catch (e: Exception) {
-                // No bloqueamos el registro si falla el envío del correo de verificación.
+                // No bloqueamos el registro si falla el envío del correo de verificación;
+                // el usuario podrá reenviarlo más adelante desde su perfil.
+                AppLogger.e("AuthRepositoryImpl", "Error al enviar correo de verificación", e)
             }
             Result.success(result)
         } catch (e: Exception) {

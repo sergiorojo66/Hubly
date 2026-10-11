@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.model.enums.EventCategory
 import com.example.rankup.domain.repository.EventRepository
+import com.example.rankup.util.AppLogger
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -28,14 +29,22 @@ class ExploreViewModel @Inject constructor(
         loadEvents()
     }
 
-    private fun loadEvents() {
+    fun loadEvents() {
         viewModelScope.launch {
-            state = state.copy(isLoading = true)
+            state = state.copy(isLoading = true, error = null)
 
-            eventRepository.getEvents().collect { events ->
-                allEvents = events
-                filterEvents()
-                state = state.copy(isLoading = false)
+            try {
+                eventRepository.getEvents().collect { events ->
+                    allEvents = events
+                    filterEvents()
+                    state = state.copy(isLoading = false, error = null)
+                }
+            } catch (e: Exception) {
+                AppLogger.e("ExploreViewModel", "Error cargando eventos", e)
+                state = state.copy(
+                    isLoading = false,
+                    error = "No se pudieron cargar los eventos. Comprueba tu conexión."
+                )
             }
         }
     }
@@ -111,5 +120,6 @@ data class ExploreState(
     val startDateFilter: Long? = null,
     val endDateFilter: Long? = null,
     val filteredEvents: List<Event> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val error: String? = null
 )

@@ -164,8 +164,13 @@ class EventDetailViewModel @Inject constructor(
 
     fun loadChatMessages(eventId: String) {
         viewModelScope.launch {
-            repository.getChatMessages(eventId).collect { msgs ->
-                _chatMessages.value = msgs
+            try {
+                repository.getChatMessages(eventId).collect { msgs ->
+                    _chatMessages.value = msgs
+                }
+            } catch (e: Exception) {
+                AppLogger.e("EventDetailViewModel", "Error cargando mensajes del chat", e)
+                _error.value = "No se pudo cargar el chat. Comprueba tu conexión."
             }
         }
     }
@@ -214,12 +219,17 @@ class EventDetailViewModel @Inject constructor(
             loadRankings(id)
             loadChatMessages(id)
 
-            repository.getEventById(id).collect { eventData ->
-                _event.value = eventData
+            try {
+                repository.getEventById(id).collect { eventData ->
+                    _event.value = eventData
 
-                eventData?.organizer?.let { organizerId ->
-                    loadOrganizerName(organizerId)
+                    eventData?.organizer?.let { organizerId ->
+                        loadOrganizerName(organizerId)
+                    }
                 }
+            } catch (e: Exception) {
+                AppLogger.e("EventDetailViewModel", "Error cargando el evento $id", e)
+                _error.value = "No se pudo cargar el evento. Comprueba tu conexión."
             }
         }
     }

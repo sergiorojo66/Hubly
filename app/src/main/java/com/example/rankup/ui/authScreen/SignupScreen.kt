@@ -106,14 +106,14 @@ fun SignupScreen(navController: NavController, viewModel: AuthViewModel = hiltVi
                 Column(modifier = Modifier.padding(32.dp)) {
                     Text("Registro", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
 
-                    if (state.error != null) {
+                    state.error?.let { errorMessage ->
                         Surface(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                             color = Color(0xFFFFEBEE),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                state.error!!,
+                                errorMessage,
                                 color = Color.Red,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(12.dp),

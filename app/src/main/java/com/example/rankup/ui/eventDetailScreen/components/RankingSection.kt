@@ -72,8 +72,14 @@ fun RankingSection(viewModel: EventDetailViewModel) {
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val points = scoreInput.toIntOrNull() ?: 0
-                    viewModel.updateUserPoints(selectedRankingUser!!.id, points)
+                    // No usamos !!: selectedRankingUser es un estado mutable y este
+                    // onClick se ejecuta de forma diferida (al pulsar), pudiendo haber
+                    // recomposiciones de por medio que lo dejen en null entre que se
+                    // pinta el diálogo y que el usuario pulsa el botón.
+                    selectedRankingUser?.let { user ->
+                        val points = scoreInput.toIntOrNull() ?: 0
+                        viewModel.updateUserPoints(user.id, points)
+                    }
                     showScoreDialog = false
                     scoreInput = ""
                 }) {

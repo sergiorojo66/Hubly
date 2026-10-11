@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rankup.domain.model.Event
 import com.example.rankup.domain.repository.EventRepository
+import com.example.rankup.util.AppLogger
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -72,9 +73,16 @@ class HomeViewModel @Inject constructor(
 
     private fun loadDataFromFirebase() {
         viewModelScope.launch {
-            eventRepository.getEvents().collect { listEvents ->
-                _events.value = listEvents
-                updateStats(listEvents)
+            try {
+                eventRepository.getEvents().collect { listEvents ->
+                    _events.value = listEvents
+                    updateStats(listEvents)
+                }
+            } catch (e: Exception) {
+                // Nos quedamos con la última lista conocida en vez de dejar la
+                // pantalla a medias; el listener se reintentará en la próxima
+                // recreación del ViewModel.
+                AppLogger.e("HomeViewModel", "Error cargando eventos", e)
             }
         }
     }
@@ -91,7 +99,7 @@ class HomeViewModel @Inject constructor(
                 _stats.value = _stats.value.copy(participants = formatUsers)
             }
             .addOnFailureListener { e ->
-
+                AppLogger.e("HomeViewModel", "Error cargando el total de usuarios", e)
             }
     }
 

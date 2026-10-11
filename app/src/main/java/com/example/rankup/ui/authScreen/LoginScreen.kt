@@ -122,14 +122,14 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = hiltVie
                             )
                         }
                     }
-                    if (state.error != null) {
+                    state.error?.let { errorMessage ->
                         Surface(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                             color = Color(0xFFFFEBEE),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                state.error!!,
+                                errorMessage,
                                 color = Color.Red,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(12.dp),
